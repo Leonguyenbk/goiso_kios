@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}Bàn gọi số — {{ extra.ten_chi_nhanh }}{% endblock %}
+{% block body %}
+<div class="min-h-screen flex flex-col">
+  <header class="bg-gov text-white px-5 py-3 flex items-center gap-4">
+    <div class="font-extrabold text-lg">{{ extra.ten_chi_nhanh }}</div>
+    <div class="ml-auto flex items-center gap-3 text-sm">
+      <span id="conn" class="hidden rounded-full bg-red-500 px-3 py-1 font-semibold">Mất kết nối…</span>
+      <span id="clock" class="font-mono tnum font-bold text-base"></span>
+      <button id="btn-switch" class="btn bg-white/15 hover:bg-white/25 px-3 py-1.5 text-sm">Đổi quầy</button>
+    </div>
+  </header>
+
+  <!-- Chọn quầy -->
+  <div id="setup" class="flex-1 flex items-center justify-center p-6">
+    <div class="w-full max-w-md bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+      <h1 class="text-xl font-bold mb-1">Đăng nhập bàn gọi số</h1>
+      <p class="text-slate-500 text-sm mb-4">Chọn quầy và nhập tên cán bộ trực.</p>
+      <label class="block text-sm font-semibold mb-1">Quầy</label>
+      <select id="sel-counter" class="w-full border border-slate-300 rounded-lg px-3 py-2 mb-3">
+        {% for c in counters %}
+        <option value="{{ c.id }}">{{ c.id }} — {{ c.prefix }}{% if c.staff %} ({{ c.staff }}){% endif %}</option>
+        {% endfor %}
+      </select>
+      <label class="block text-sm font-semibold mb-1">Tên cán bộ</label>
+      <input id="inp-staff" class="w-full border border-slate-300 rounded-lg px-3 py-2 mb-4" placeholder="VD: Nguyễn Văn A">
+      <button id="btn-login" class="btn bg-gov hover:bg-gov-700 text-white w-full py-3 text-lg">Vào ca</button>
+      <p id="setup-err" class="text-red-600 text-sm mt-2 hidden"></p>
+    </div>
+  </div>
+
+  <!-- Bàn làm việc -->
+  <main id="console" class="hidden flex-1 grid gap-4 p-4" style="grid-template-columns: 1.6fr 1fr;">
+    <!-- Trái -->
+    <section class="flex flex-col gap-4">
+      <div class="bg-white rounded-2xl border border-slate-200 p-6 flex-1 flex flex-col items-center justify-center text-center">
+        <div class="text-slate-500 uppercase tracking-wider text-sm font-semibold">Đang phục vụ</div>
+        <div id="cur-num" class="font-mono font-extrabold tnum text-gov leading-none my-2" style="font-size: clamp(4rem, 12vw, 9rem);">—</div>
+        <div id="cur-svc" class="text-xl font-semibold text-slate-600"></div>
+        <div id="cur-name" class="text-lg text-slate-500 mt-1"></div>
+        <div class="mt-3 text-slate-400 text-sm">Thời gian phục vụ: <span id="cur-time" class="font-mono tnum">0:00</span></div>
+      </div>
+
+      <button id="btn-next" class="btn bg-gov hover:bg-gov-700 text-white text-3xl py-8 shadow-sm">
+        GỌI TIẾP <span class="text-base font-normal opacity-70">(phím cách)</span>
+      </button>
+
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <button id="btn-recall" class="btn bg-white border border-slate-300 hover:bg-slate-50 py-4">🔊 Gọi lại</button>
+        <button id="btn-done"   class="btn bg-emerald-600 hover:bg-emerald-700 text-white py-4">✓ Hoàn thành</button>
+        <button id="btn-missed" class="btn bg-amber-500 hover:bg-amber-600 text-white py-4">⤺ Vắng</button>
+        <button id="btn-pause"  class="btn bg-white border border-slate-300 hover:bg-slate-50 py-4">⏸ Tạm dừng</button>
+      </div>
+
+      <form id="frm-specific" class="flex gap-2">
+        <input id="inp-specific" class="flex-1 border border-slate-300 rounded-lg px-3 py-3 font-mono uppercase" placeholder="Gọi số cụ thể, VD: A-25">
+        <button class="btn bg-slate-800 hover:bg-slate-900 text-white px-5">Gọi</button>
+      </form>
+      <p id="err" class="text-red-600 text-sm hidden"></p>
+    </section>
+
+    <!-- Phải -->
+    <section class="flex flex-col gap-4 min-h-0">
+      <div class="bg-white rounded-2xl border border-slate-200 p-4">
+        <div class="flex items-baseline justify-between">
+          <div class="font-bold">Quầy <span id="lbl-counter"></span></div>
+          <div class="text-sm text-slate-500">CB: <span id="lbl-staff"></span></div>
+        </div>
+        <div class="grid grid-cols-2 gap-2 mt-3 text-center">
+          <div class="bg-slate-50 rounded-lg py-2"><div class="text-2xl font-extrabold tnum" id="stat-wait">0</div><div class="text-xs text-slate-500">đang chờ</div></div>
+          <div class="bg-slate-50 rounded-lg py-2"><div class="text-2xl font-extrabold tnum" id="stat-done">0</div><div class="text-xs text-slate-500">đã xử lý</div></div>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-2xl border border-slate-200 p-4 flex-1 min-h-0 flex flex-col">
+        <div class="font-bold mb-2">Hàng chờ</div>
+        <div id="waitlist" class="flex-1 overflow-y-auto space-y-1 pr-1"></div>
+      </div>
+
+      <div class="bg-white rounded-2xl border border-slate-200 p-4">
+        <div class="font-bold mb-2">Lịch sử gần đây</div>
+        <div id="history" class="space-y-1 text-sm max-h-40 overflow-y-auto"></div>
+      </div>
+    </section>
+  </main>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script type="module" src="{{ url_for('static', filename='js/counter.js') }}"></script>
+{% endblock %}

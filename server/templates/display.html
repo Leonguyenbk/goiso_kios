@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Màn hình gọi số — {{ extra.ten_chi_nhanh }}{% endblock %}
+{% block head %}
+<style>
+  #grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); }
+  .card-serving { border-color: #0b5fa5; }
+</style>
+{% endblock %}
+
+{% block body %}
+<div class="h-screen flex flex-col select-none">
+
+  <!-- Header -->
+  <header class="shrink-0 bg-gov text-white px-6 py-3 flex items-center gap-4">
+    {% if extra.logo_path %}<img src="{{ extra.logo_path }}" alt="" class="h-14 w-14 object-contain bg-white rounded p-1">{% endif %}
+    <div class="leading-tight">
+      <div class="text-lg md:text-xl font-semibold tracking-wide">{{ extra.ten_co_quan }}</div>
+      <div class="text-2xl md:text-3xl font-extrabold">{{ extra.ten_chi_nhanh }}</div>
+    </div>
+    <div class="ml-auto text-right leading-tight">
+      <div id="clock" class="text-4xl md:text-5xl font-extrabold tnum font-mono">--:--:--</div>
+      <div id="date" class="text-base md:text-lg font-medium opacity-90"></div>
+    </div>
+  </header>
+
+  <!-- Thân -->
+  <main class="flex-1 min-h-0 grid gap-4 p-4" style="grid-template-columns: 38fr 62fr;">
+
+    <!-- SPOTLIGHT: lượt gọi mới nhất -->
+    <section id="spotlight" class="rounded-2xl bg-white border-2 border-gov/20 flex flex-col items-center justify-center text-center p-6 relative overflow-hidden">
+      <div class="text-2xl font-semibold text-gov-700 uppercase tracking-wider">Mời quý khách</div>
+      <div id="sp-empty" class="mt-8 text-4xl text-slate-400 font-semibold">Chưa có lượt gọi</div>
+      <div id="sp-body" class="hidden flex-col items-center">
+        <div id="sp-number" class="mt-2 font-mono font-extrabold tnum leading-none text-gov" style="font-size: clamp(5rem, 16vw, 14rem);">A-000</div>
+        <div class="mt-4 text-3xl font-semibold text-slate-500">xin mời đến</div>
+        <div id="sp-counter" class="mt-1 font-extrabold text-ink" style="font-size: clamp(3rem, 8vw, 6.5rem);">QUẦY 00</div>
+        <div id="sp-service" class="mt-4 text-2xl md:text-3xl font-semibold max-w-3xl"></div>
+      </div>
+    </section>
+
+    <!-- Lưới quầy -->
+    <section class="min-h-0 overflow-hidden">
+      <div id="grid" class="grid gap-4 h-full auto-rows-fr"></div>
+    </section>
+  </main>
+
+  <!-- Băng chạy: đã gọi gần đây -->
+  <div class="shrink-0 bg-white border-t border-slate-200 px-6 py-3 flex items-center gap-4 overflow-hidden">
+    <span class="text-slate-500 font-semibold shrink-0 uppercase text-sm tracking-wider">Đã gọi gần đây</span>
+    <div id="ticker" class="flex gap-3 flex-nowrap overflow-hidden"></div>
+  </div>
+
+  <!-- Chân trang: đang chờ + tổng lượt -->
+  <footer class="shrink-0 bg-gov-700 text-white px-6 py-3 flex items-center gap-6 flex-wrap">
+    <span class="font-semibold uppercase text-sm tracking-wider opacity-80">Đang chờ</span>
+    <div id="waiting" class="flex gap-4 flex-wrap text-lg font-semibold"></div>
+    <div class="ml-auto text-lg">Tổng lượt hôm nay: <b id="total" class="tnum font-mono text-2xl">0</b></div>
+    <span id="conn" class="hidden rounded-full bg-red-500 px-3 py-1 text-sm font-semibold">Mất kết nối máy chủ…</span>
+  </footer>
+</div>
+
+<!-- Lớp mở đầu: cần thao tác để bật âm thanh + toàn màn hình -->
+<div id="gate" class="fixed inset-0 z-50 bg-gov text-white flex flex-col items-center justify-center gap-6 cursor-pointer">
+  <div class="text-3xl font-bold">{{ extra.ten_chi_nhanh }}</div>
+  <div class="text-xl opacity-90">Chạm hoặc nhấn phím bất kỳ để bắt đầu</div>
+  <div class="text-6xl">🔊</div>
+  <div class="text-sm opacity-70">Bật âm thanh &amp; toàn màn hình</div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script type="module" src="{{ url_for('static', filename='js/display.js') }}"></script>
+{% endblock %}

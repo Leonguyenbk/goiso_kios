@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Màn hình gọi số (rút gọn){% endblock %}
+{% block body %}
+<div class="h-screen flex flex-col select-none">
+  <header class="shrink-0 bg-gov text-white px-6 py-4 text-center">
+    <div class="text-xl font-semibold">{{ extra.ten_co_quan }}</div>
+    <div class="text-3xl font-extrabold">{{ extra.ten_chi_nhanh }}</div>
+  </header>
+  <main class="flex-1 flex flex-col items-center justify-center text-center">
+    <div class="text-3xl md:text-5xl font-semibold text-slate-500 uppercase tracking-widest">Mời số</div>
+    <div id="num" class="font-mono font-extrabold tnum text-gov leading-none" style="font-size: clamp(6rem, 30vw, 26rem);">—</div>
+    <div id="cnt" class="text-4xl md:text-7xl font-extrabold">&nbsp;</div>
+    <div id="svc" class="mt-4 text-2xl md:text-4xl font-semibold text-slate-600 max-w-5xl px-6"></div>
+  </main>
+  <footer class="shrink-0 bg-gov-700 text-white px-6 py-3 text-right">
+    <span id="conn" class="hidden rounded-full bg-red-500 px-3 py-1 text-sm font-semibold">Mất kết nối…</span>
+    <span id="clock" class="text-2xl font-mono tnum font-bold">--:--:--</span>
+  </footer>
+</div>
+<div id="gate" class="fixed inset-0 z-50 bg-gov text-white flex flex-col items-center justify-center gap-4 cursor-pointer">
+  <div class="text-2xl font-bold">Chạm để bắt đầu</div><div class="text-6xl">🔊</div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script type="module">
+import { connectStream, chime, speak, buildCallSentence, docSo } from "{{ url_for('static', filename='js/common.js') }}";
+const $ = (s) => document.querySelector(s);
+let cfg = { voice_rate: 0.95, voice_repeat: 2, voice_template: 'Mời số {so}, đến quầy số {quay}' };
+let audioReady = false;
+setInterval(() => $('#clock').textContent = new Date().toLocaleTimeString('vi-VN', { hour12: false }), 1000);
+function gate() {
+  audioReady = true; chime();
+  if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(() => {});
+  $('#gate').remove();
+  fetch('/api/config/public').then(r => r.json()).then(d => cfg = { ...cfg, ...d.extra }).catch(() => {});
+}
+$('#gate').addEventListener('click', gate);
+window.addEventListener('keydown', () => { if ($('#gate')) gate(); }, { once: true });
+connectStream((ev) => {
+  if (ev.type === 'call') {
+    $('#num').textContent = ev.full_no;
+    $('#num').style.color = ev.service_color || '#0b5fa5';
+    $('#cnt').textContent = 'QUẦY ' + ev.counter_no;
+    $('#svc').textContent = ev.service_name || '';
+    if (audioReady) {
+      chime();
+      setTimeout(() => speak(buildCallSentence(cfg.voice_template, ev.full_no, ev.counter_no),
+        { rate: cfg.voice_rate, repeat: cfg.voice_repeat }), 650);
+    }
+  } else if (ev.type === '_disconnected') {
+    $('#conn').classList.remove('hidden');
+  } else if (ev.type === 'snapshot') {
+    $('#conn').classList.add('hidden');
+  }
+});
+</script>
+{% endblock %}

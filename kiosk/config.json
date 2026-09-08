@@ -1,0 +1,11 @@
+{
+  "server_url": "http://127.0.0.1:5000",
+  "printer_name": "",
+  "paper_width_mm": 80,
+  "preview_only": false,
+  "fullscreen": true,
+  "columns": 2,
+  "refresh_seconds": 20,
+  "confirm_seconds": 6,
+  "font_family": "Arial"
+}

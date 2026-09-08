@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}Quản trị — {{ extra.ten_chi_nhanh }}{% endblock %}
+{% block body %}
+<div class="min-h-screen">
+  <header class="bg-gov text-white px-5 py-3 flex items-center gap-4">
+    <div class="font-extrabold">Quản trị hệ thống gọi số</div>
+    <a href="/display" class="ml-auto text-sm underline opacity-90">Màn hình</a>
+    <a href="/counter" class="text-sm underline opacity-90">Bàn gọi số</a>
+    <button id="btn-logout" class="btn bg-white/15 hover:bg-white/25 px-3 py-1.5 text-sm hidden">Đăng xuất</button>
+  </header>
+
+  <!-- Đăng nhập -->
+  <div id="login" class="flex items-center justify-center p-10">
+    <div class="w-full max-w-sm bg-white rounded-2xl border border-slate-200 p-6">
+      <h1 class="text-lg font-bold mb-3">Đăng nhập quản trị</h1>
+      <input id="inp-pw" type="password" class="w-full border border-slate-300 rounded-lg px-3 py-2 mb-3" placeholder="Mật khẩu">
+      <button id="btn-login" class="btn bg-gov hover:bg-gov-700 text-white w-full py-2.5">Đăng nhập</button>
+      <p id="login-err" class="text-red-600 text-sm mt-2 hidden"></p>
+      <p class="text-xs text-slate-400 mt-3">Mật khẩu mặc định: <code>admin123</code> — đổi ngay sau khi vào.</p>
+    </div>
+  </div>
+
+  <!-- Bảng điều khiển -->
+  <main id="panel" class="hidden max-w-5xl mx-auto p-5 space-y-6">
+    <nav class="flex gap-2 flex-wrap">
+      <button data-tab="services" class="tab btn bg-gov text-white px-4 py-2">Dịch vụ</button>
+      <button data-tab="counters" class="tab btn bg-white border px-4 py-2">Quầy</button>
+      <button data-tab="extra" class="tab btn bg-white border px-4 py-2">Cấu hình chung</button>
+      <button data-tab="stats" class="tab btn bg-white border px-4 py-2">Thống kê</button>
+    </nav>
+
+    <section data-panel="services" class="space-y-3">
+      <div class="flex justify-between items-center"><h2 class="font-bold text-lg">Dịch vụ</h2>
+        <button id="add-svc" class="btn bg-white border px-3 py-1.5 text-sm">+ Thêm dịch vụ</button></div>
+      <div class="overflow-x-auto"><table class="w-full text-sm border-collapse" id="tbl-svc">
+        <thead><tr class="text-left border-b bg-slate-50">
+          <th class="p-2">Mã</th><th class="p-2">Tên</th><th class="p-2">Rút gọn</th>
+          <th class="p-2">Màu</th><th class="p-2">Giới hạn/ngày</th><th class="p-2">Bật</th><th></th>
+        </tr></thead><tbody></tbody>
+      </table></div>
+    </section>
+
+    <section data-panel="counters" class="hidden space-y-3">
+      <div class="flex justify-between items-center"><h2 class="font-bold text-lg">Quầy</h2>
+        <button id="add-cnt" class="btn bg-white border px-3 py-1.5 text-sm">+ Thêm quầy</button></div>
+      <div class="overflow-x-auto"><table class="w-full text-sm border-collapse" id="tbl-cnt">
+        <thead><tr class="text-left border-b bg-slate-50">
+          <th class="p-2">Tên quầy</th><th class="p-2">Dịch vụ (mã, phân tách bằng dấu phẩy)</th>
+          <th class="p-2">Cán bộ</th><th class="p-2">Thứ tự</th><th class="p-2">Bật</th><th></th>
+        </tr></thead><tbody></tbody>
+      </table></div>
+    </section>
+
+    <section data-panel="extra" class="hidden space-y-3">
+      <h2 class="font-bold text-lg">Cấu hình chung</h2>
+      <div class="grid sm:grid-cols-2 gap-3" id="extra-fields"></div>
+      <label class="block text-sm font-semibold mt-3">Khung giờ lấy số (JSON)</label>
+      <textarea id="extra-slots" class="w-full border rounded-lg p-2 font-mono text-xs h-24"></textarea>
+      <label class="block text-sm font-semibold mt-3">Đổi mật khẩu quản trị (để trống nếu không đổi)</label>
+      <input id="new-pw" type="password" class="border rounded-lg px-3 py-2 w-full sm:w-80" placeholder="Mật khẩu mới">
+    </section>
+
+    <section data-panel="stats" class="hidden space-y-4">
+      <h2 class="font-bold text-lg">Thống kê hôm nay</h2>
+      <div id="stats-today" class="text-sm"></div>
+      <button id="btn-reset" class="btn bg-red-600 hover:bg-red-700 text-white px-4 py-2">Reset toàn bộ số hôm nay</button>
+      <h3 class="font-semibold mt-4">Lượt khách 30 ngày gần nhất</h3>
+      <div id="stats-visitors" class="text-sm"></div>
+    </section>
+
+    <div class="sticky bottom-0 bg-paper/95 backdrop-blur py-3 flex gap-3 border-t">
+      <button id="btn-save" class="btn bg-gov hover:bg-gov-700 text-white px-6 py-2.5">Lưu cấu hình</button>
+      <span id="save-msg" class="self-center text-sm"></span>
+    </div>
+  </main>
+</div>
+{% endblock %}
+{% block scripts %}
+<script type="module" src="{{ url_for('static', filename='js/admin.js') }}"></script>
+{% endblock %}

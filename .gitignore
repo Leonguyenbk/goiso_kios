@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Môi trường / bí mật
+.env
+server/.env
+*.local
+
+# SQLite tạm
+*.db-wal
+*.db-shm
+*.db-journal
+
+# Tệp phát sinh khi chạy
+kiosk/ticket_demo.png
+kiosk/*.preview.png
+
+# Bản clone tham khảo (không thuộc dự án — xem README mục hallmark)
+_ref_hallmark/
+
+# Hệ điều hành / IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
