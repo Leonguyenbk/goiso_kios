@@ -17,6 +17,7 @@ server/.env
 *.db-journal
 
 # CSDL đa chi nhánh (dữ liệu chạy thật — sao lưu riêng, không đưa vào git)
+hethong_goiso.db
 hethong_v2.db
 
 # File dự án của trình xem CSDL (SQLiteStudio/DB Browser)
