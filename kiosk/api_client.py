@@ -44,10 +44,14 @@ class ApiClient:
 
     @staticmethod
     def _msg(r):
+        fallback = f"Lỗi máy chủ ({r.status_code})"
         try:
-            return r.json().get("error", f"Lỗi máy chủ ({r.status_code})")
+            body = r.json()
         except ValueError:
-            return f"Lỗi máy chủ ({r.status_code})"
+            return fallback
+        if isinstance(body, dict):
+            return body.get("error") or body.get("message") or fallback
+        return fallback
 
     def public_config(self):
         return self._get("/config/public")

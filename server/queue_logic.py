@@ -84,9 +84,9 @@ def _check_time_lock(extra):
     now = datetime.now()
     wd = now.weekday()  # 5=Bảy, 6=CN
     if wd == 5 and not extra.get("allow_saturday"):
-        raise QueueError(extra.get("lock_message", "Ngoài giờ làm việc."))
+        raise QueueError((extra.get("lock_message") or "Ngoài giờ làm việc."))
     if wd == 6 and not extra.get("allow_sunday"):
-        raise QueueError(extra.get("lock_message", "Ngoài giờ làm việc."))
+        raise QueueError((extra.get("lock_message") or "Ngoài giờ làm việc."))
     slots = extra.get("time_slots") or []
     if not slots:
         return
@@ -96,7 +96,7 @@ def _check_time_lock(extra):
         end = int(s.get("end_hour", 23)) * 60 + int(s.get("end_minute", 59))
         if start <= minutes <= end:
             return
-    raise QueueError(extra.get("lock_message", "Ngoài giờ làm việc."))
+    raise QueueError((extra.get("lock_message") or "Ngoài giờ làm việc."))
 
 
 def within_time_lock(branch_id):

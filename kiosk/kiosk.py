@@ -172,6 +172,10 @@ class KioskApp(ctk.CTk):
         threading.Thread(target=work, daemon=True).start()
 
     def _on_ticket(self, ticket):
+        if not isinstance(ticket, dict) or "full_no" not in ticket:
+            self._toast("Máy chủ trả về dữ liệu không hợp lệ — kiểm tra 'server_url' "
+                        "và 'api_key' trong config.json.", error=True)
+            return
         threading.Thread(target=self._print_ticket, args=(ticket,), daemon=True).start()
         self._show_confirm(ticket)
 
