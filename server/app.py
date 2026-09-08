@@ -13,6 +13,7 @@ import hashlib
 import json
 import os
 import queue as queuelib
+import sqlite3
 import threading
 import time
 
@@ -122,6 +123,22 @@ def _tpl_ctx(branch):
     extra = db.get_extra(branch["id"])
     extra["ten_chi_nhanh"] = branch["full_name"]
     return extra
+
+
+@app.errorhandler(sqlite3.OperationalError)
+def _db_locked(e):
+    msg = str(e)
+    if "locked" in msg or "busy" in msg:
+        text = ("CSDL đang bị một chương trình khác khoá (thường là DB Browser "
+                "for SQLite / SQLiteStudio đang mở file hethong_v2.db). "
+                "Hãy đóng chương trình đó rồi thử lại.")
+        code = 503
+    else:
+        text = "Lỗi CSDL: " + msg
+        code = 500
+    if request.path.startswith("/api/"):
+        return jsonify(error=text), code
+    return text, code
 
 
 # ----------------------------------------------------------------- SSE stream
