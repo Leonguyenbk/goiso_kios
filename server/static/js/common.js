@@ -104,6 +104,7 @@ export function chime() {
 
 let viVoice = null;
 function pickViVoice() {
+  if (!('speechSynthesis' in window)) return;
   const voices = speechSynthesis.getVoices();
   viVoice = voices.find(v => /vi[-_]VN/i.test(v.lang) || /vietnam/i.test(v.name)) ||
             voices.find(v => v.lang && v.lang.toLowerCase().startsWith('vi')) || null;
@@ -111,10 +112,22 @@ function pickViVoice() {
 if ('speechSynthesis' in window) {
   pickViVoice();
   speechSynthesis.onvoiceschanged = pickViVoice;
+  // Giọng "Online (Natural)" của Edge nạp trễ — dò lại vài lần trong ~12 giây đầu.
+  let tries = 0;
+  const t = setInterval(() => {
+    pickViVoice();
+    if (viVoice || ++tries > 24) clearInterval(t);
+  }, 500);
+}
+
+// Tên giọng tiếng Việt đang dùng ('' nếu chưa có) — để hiển thị cảnh báo.
+export function viVoiceName() {
+  return viVoice ? (viVoice.name || 'vi-VN') : '';
 }
 
 export function speak(text, { rate = 0.95, repeat = 2, gap = 700 } = {}) {
   if (!('speechSynthesis' in window)) return;
+  pickViVoice();  // luôn lấy giọng mới nhất ngay trước khi đọc
   speechSynthesis.cancel();
   let i = 0;
   const sayOnce = () => {

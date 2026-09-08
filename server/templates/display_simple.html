@@ -14,6 +14,7 @@
   </main>
   <footer class="shrink-0 bg-gov-700 text-white px-6 py-3 text-right">
     <span id="conn" class="hidden rounded-full bg-red-500 px-3 py-1 text-sm font-semibold">Mất kết nối…</span>
+    <span id="novoice" class="hidden rounded-full bg-amber-500 px-3 py-1 text-sm font-semibold">Chưa có giọng đọc tiếng Việt</span>
     <span id="clock" class="text-2xl font-mono tnum font-bold">--:--:--</span>
   </footer>
 </div>
@@ -23,7 +24,7 @@
 {% endblock %}
 {% block scripts %}
 <script type="module">
-import { connectStream, chime, speak, buildCallSentence, docSo } from "{{ url_for('static', filename='js/common.js') }}";
+import { connectStream, chime, speak, buildCallSentence, docSo, viVoiceName } from "{{ url_for('static', filename='js/common.js') }}";
 const $ = (s) => document.querySelector(s);
 let cfg = { voice_rate: 0.95, voice_repeat: 2, voice_template: 'Mời số {so}, đến quầy số {quay}' };
 let audioReady = false;
@@ -33,6 +34,8 @@ function gate() {
   if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(() => {});
   $('#gate').remove();
   fetch('/api/b/' + window.__BRANCH__ + '/config/public').then(r => r.json()).then(d => cfg = { ...cfg, ...d.extra }).catch(() => {});
+  const chk = () => $('#novoice').classList.toggle('hidden', !!viVoiceName());
+  chk(); setInterval(chk, 4000);
 }
 $('#gate').addEventListener('click', gate);
 window.addEventListener('keydown', () => { if ($('#gate')) gate(); }, { once: true });
