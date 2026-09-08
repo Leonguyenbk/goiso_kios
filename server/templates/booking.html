@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Đặt lịch hẹn online — Hệ thống một cửa</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  {% if turnstile_site_key %}
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+  {% endif %}
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body{font-family:'Be Vietnam Pro',system-ui,sans-serif}
+    .chip{border:1px solid #cbd5e1;border-radius:.6rem;padding:.5rem .8rem;cursor:pointer;background:#fff}
+    .chip[aria-pressed="true"]{background:#0b5fa5;color:#fff;border-color:#0b5fa5}
+    .chip[disabled]{opacity:.4;cursor:not-allowed}
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen">
+  <script>window.__TURNSTILE_KEY__ = {{ turnstile_site_key|tojson }};</script>
+  <header class="bg-[#0b5fa5] text-white px-6 py-5">
+    <div class="max-w-2xl mx-auto">
+      <div class="text-sm font-semibold opacity-90">HỆ THỐNG MỘT CỬA</div>
+      <div class="text-2xl font-extrabold">Đặt lịch hẹn online</div>
+    </div>
+  </header>
+
+  <main class="max-w-2xl mx-auto p-5 space-y-5">
+    <div id="err" class="hidden bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 text-sm"></div>
+
+    <!-- Bước 1: chi nhánh -->
+    <section id="s-branch" class="bg-white rounded-2xl border border-slate-200 p-5">
+      <div class="font-bold mb-1">1. Chọn chi nhánh</div>
+      <select id="sel-branch" class="w-full border border-slate-300 rounded-lg px-3 py-2 mt-2"></select>
+      <p id="branch-addr" class="text-sm text-slate-500 mt-2"></p>
+    </section>
+
+    <!-- Bước 2: dịch vụ -->
+    <section id="s-service" class="bg-white rounded-2xl border border-slate-200 p-5 hidden">
+      <div class="font-bold mb-2">2. Chọn thủ tục</div>
+      <div id="svc-list" class="flex flex-wrap gap-2"></div>
+    </section>
+
+    <!-- Bước 3: ngày -->
+    <section id="s-date" class="bg-white rounded-2xl border border-slate-200 p-5 hidden">
+      <div class="font-bold mb-2">3. Chọn ngày</div>
+      <div id="date-list" class="flex flex-wrap gap-2"></div>
+    </section>
+
+    <!-- Bước 4: khung giờ -->
+    <section id="s-slot" class="bg-white rounded-2xl border border-slate-200 p-5 hidden">
+      <div class="font-bold mb-2">4. Chọn khung giờ</div>
+      <div id="slot-list" class="flex flex-wrap gap-2"></div>
+      <p id="slot-empty" class="text-sm text-slate-500 hidden">Không còn khung giờ trống cho ngày này.</p>
+    </section>
+
+    <!-- Bước 5: thông tin -->
+    <section id="s-form" class="bg-white rounded-2xl border border-slate-200 p-5 hidden">
+      <div class="font-bold mb-3">5. Thông tin người hẹn</div>
+      <label class="block text-sm font-semibold mb-1">Họ và tên</label>
+      <input id="f-name" class="w-full border border-slate-300 rounded-lg px-3 py-2 mb-3">
+      <label class="block text-sm font-semibold mb-1">Số CCCD/CMND</label>
+      <input id="f-cccd" inputmode="numeric" class="w-full border border-slate-300 rounded-lg px-3 py-2 mb-3">
+      <label class="block text-sm font-semibold mb-1">Số điện thoại</label>
+      <input id="f-phone" inputmode="numeric" class="w-full border border-slate-300 rounded-lg px-3 py-2 mb-3">
+      <div id="ts-widget" class="cf-turnstile my-3" data-sitekey=""></div>
+      <button id="btn-book" class="w-full bg-[#0b5fa5] hover:bg-[#094a82] text-white rounded-lg py-3 font-semibold">Xác nhận đặt lịch</button>
+    </section>
+
+    <!-- Kết quả -->
+    <section id="s-done" class="bg-white rounded-2xl border border-emerald-300 p-6 text-center hidden">
+      <div class="text-emerald-600 font-bold text-lg">✓ Đặt lịch thành công</div>
+      <div class="text-sm text-slate-500 mt-1">Mã lịch hẹn của quý khách</div>
+      <div id="r-code" class="text-4xl font-extrabold tracking-widest my-2 font-mono">—</div>
+      <div id="r-meta" class="text-sm text-slate-600"></div>
+      <div id="r-qr" class="flex justify-center my-4"></div>
+      <p class="text-sm text-slate-500">Đến kiosk tại sảnh chi nhánh, nhập mã này (hoặc quét QR) trong khung giờ hẹn để lấy số thứ tự.</p>
+      <a id="r-link" class="inline-block mt-3 text-[#0b5fa5] underline text-sm" target="_blank">Xem / huỷ lịch hẹn</a>
+      <div><button id="btn-again" class="mt-4 text-sm text-slate-500 underline">Đặt lịch khác</button></div>
+    </section>
+  </main>
+
+  <script type="module" src="{{ url_for('static', filename='js/booking.js') }}"></script>
+</body>
+</html>

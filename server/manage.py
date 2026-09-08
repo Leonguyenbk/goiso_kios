@@ -1,10 +1,16 @@
-"""Tiện ích dòng lệnh cho hệ thống gọi số.
+"""Tiện ích dòng lệnh cho hệ thống gọi số ĐA CHI NHÁNH.
 
-  python manage.py init                 # tạo/di trú bảng
-  python manage.py set-admin-pw <mk>    # đặt lại mật khẩu quản trị
-  python manage.py reset-today          # xoá toàn bộ số đã cấp hôm nay
-  python manage.py show-config          # in cấu hình hiện tại
+  python manage.py init                              # tạo bảng CSDL
+  python manage.py set-admin-pw <mk>                 # đặt mật khẩu quản trị TỔNG
+  python manage.py add-branch <code> "<tên ngắn>" "<tên đầy đủ>" ["<địa chỉ>"]
+  python manage.py seed-branches <branches.csv>      # nạp hàng loạt (code,name,full_name,address)
+  python manage.py list-branches                     # xem chi nhánh + khoá
+  python manage.py regen-key <code>                  # tạo lại API key kiosk
+  python manage.py regen-display-token <code>
+  python manage.py reset-today [<code>|all]          # xoá số đã cấp hôm nay
+  python manage.py show-config <code>                # in cấu hình 1 chi nhánh
 """
+import csv
 import hashlib
 import json
 import sys
@@ -17,6 +23,14 @@ except Exception:  # noqa: BLE001
 import db
 
 
+def _print_branch(b):
+    flag = "ON " if b["active"] else "off"
+    print(f"  [{flag}] {b['code']:<12} #{b['display_order']:<3} {b['name']}")
+    print(f"        {b['full_name']}")
+    print(f"        api_key       = {b['api_key']}")
+    print(f"        display_token = {b['display_token']}")
+
+
 def main(argv):
     if not argv:
         print(__doc__)
@@ -25,7 +39,12 @@ def main(argv):
     db.init_db()
 
     if cmd == "init":
-        print("Đã khởi tạo / di trú CSDL:", db.DB_PATH)
+        print("Đã khởi tạo CSDL:", db.DB_PATH)
+        if not db.list_branches():
+            b = db.create_branch("eakar", "Ea Kar",
+                                 "CHI NHÁNH KHU VỰC EA KAR", "")
+            print("Đã tạo chi nhánh mẫu để chạy thử:")
+            _print_branch(b)
 
     elif cmd == "set-admin-pw":
         if len(argv) < 2:
@@ -33,25 +52,94 @@ def main(argv):
             return
         h = hashlib.sha256(argv[1].encode("utf-8")).hexdigest()
         db.set_config("admin_password", h)
-        print("Đã đặt mật khẩu quản trị mới.")
+        print("Đã đặt mật khẩu quản trị tổng mới.")
+
+    elif cmd == "add-branch":
+        if len(argv) < 4:
+            print('VD: python manage.py add-branch eakar "Ea Kar" "CHI NHÁNH KHU VỰC EA KAR" "Thị trấn Ea Kar"')
+            return
+        addr = argv[4] if len(argv) > 4 else ""
+        try:
+            b = db.create_branch(argv[1], argv[2], argv[3], addr)
+        except ValueError as e:
+            print("Lỗi:", e)
+            return
+        print("Đã tạo chi nhánh:")
+        _print_branch(b)
+
+    elif cmd == "seed-branches":
+        if len(argv) < 2:
+            print("Thiếu đường dẫn CSV. Cột: code,name,full_name,address")
+            return
+        created, skipped = 0, 0
+        with open(argv[1], encoding="utf-8-sig", newline="") as f:
+            for row in csv.DictReader(f):
+                code = (row.get("code") or "").strip()
+                if not code:
+                    continue
+                try:
+                    db.create_branch(code, (row.get("name") or code).strip(),
+                                     (row.get("full_name") or code).strip(),
+                                     (row.get("address") or "").strip())
+                    created += 1
+                    print("  + ", code)
+                except ValueError as e:
+                    skipped += 1
+                    print("  . ", code, "-", e)
+        print(f"Xong: tạo {created}, bỏ qua {skipped}.")
+
+    elif cmd == "list-branches":
+        bs = db.list_branches()
+        if not bs:
+            print("(chưa có chi nhánh nào — dùng add-branch hoặc seed-branches)")
+        for b in bs:
+            _print_branch(b)
+        print(f"\nTổng: {len(bs)} chi nhánh.")
+
+    elif cmd in ("regen-key", "regen-display-token"):
+        if len(argv) < 2:
+            print("Thiếu mã chi nhánh.")
+            return
+        field = "api_key" if cmd == "regen-key" else "display_token"
+        try:
+            val = db.regen_branch_field(argv[1], field)
+        except ValueError as e:
+            print("Lỗi:", e)
+            return
+        print(f"{field} mới của {argv[1]}: {val}")
 
     elif cmd == "reset-today":
+        target = argv[1] if len(argv) > 1 else "all"
         day = db.today_str()
+        codes = ([b["code"] for b in db.list_branches()] if target == "all" else [target])
         with db.LOCK, db.get_conn() as conn:
-            n = conn.execute("DELETE FROM queue WHERE date_record=?", (day,)).rowcount
-            conn.execute("DELETE FROM visitor_stats WHERE date_record=?", (day,))
-            conn.execute("UPDATE counters_status SET last_num='', status='offline'")
-            services = db.get_json_config("services", {}) or {}
-            for v in services.values():
-                v["current_count"] = 0
-            conn.execute("UPDATE config SET value=? WHERE key='services'",
-                         (json.dumps(services, ensure_ascii=False),))
-        print(f"Đã xoá {n} số của ngày {day}.")
+            total = 0
+            for code in codes:
+                b = db.get_branch(code)
+                if not b:
+                    print("  ? bỏ qua", code)
+                    continue
+                n = conn.execute("DELETE FROM queue WHERE branch_id=? AND date_record=?",
+                                 (b["id"], day)).rowcount
+                conn.execute("DELETE FROM visitor_stats WHERE branch_id=? AND date_record=?",
+                             (b["id"], day))
+                conn.execute("UPDATE counters_status SET last_num='', status='offline' WHERE branch_id=?",
+                             (b["id"],))
+                total += n
+                print(f"  {code}: xoá {n} số")
+        print(f"Đã xoá tổng {total} số của ngày {day}.")
 
     elif cmd == "show-config":
-        for key in ("services", "counters", "extra"):
-            print(f"\n=== {key} ===")
-            print(json.dumps(db.get_json_config(key, {}), ensure_ascii=False, indent=2))
+        if len(argv) < 2:
+            print("Thiếu mã chi nhánh.")
+            return
+        b = db.get_branch(argv[1])
+        if not b:
+            print("Không có chi nhánh", argv[1])
+            return
+        for key in ("services", "counters", "extra", "booking"):
+            print(f"\n=== {argv[1]} / {key} ===")
+            print(json.dumps(db.get_json_config(key, {}, b["id"]), ensure_ascii=False, indent=2))
 
     else:
         print("Lệnh không hợp lệ.\n")

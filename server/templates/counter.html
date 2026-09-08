@@ -24,6 +24,11 @@
       </select>
       <label class="block text-sm font-semibold mb-1">Tên cán bộ</label>
       <input id="inp-staff" class="w-full border border-slate-300 rounded-lg px-3 py-2 mb-4" placeholder="VD: Nguyễn Văn A">
+      <div id="pin-wrap" class="{% if not pin_required %}hidden{% endif %}">
+        <label class="block text-sm font-semibold mb-1">Mã PIN quầy</label>
+        <input id="inp-pin" type="password" inputmode="numeric" autocomplete="off"
+               class="w-full border border-slate-300 rounded-lg px-3 py-2 mb-4" placeholder="PIN chi nhánh cấp">
+      </div>
       <button id="btn-login" class="btn bg-gov hover:bg-gov-700 text-white w-full py-3 text-lg">Vào ca</button>
       <p id="setup-err" class="text-red-600 text-sm mt-2 hidden"></p>
     </div>

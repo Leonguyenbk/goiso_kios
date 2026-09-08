@@ -1,10 +1,18 @@
 /* Tiện ích dùng chung: kết nối SSE, đọc số tiếng Việt, chuông báo. */
 
+/* Mã chi nhánh do template nhúng vào (window.__BRANCH__). */
+export const BRANCH = (typeof window !== 'undefined' && window.__BRANCH__) || '';
+
+/* Ghép đường dẫn API theo chi nhánh: bpath('/ticket') -> '/api/b/<code>/ticket' */
+export function bpath(p) {
+  return '/api/b/' + encodeURIComponent(BRANCH) + p;
+}
+
 export function connectStream(onEvent) {
   let es = null;
   let retry = 0;
   function open() {
-    es = new EventSource('/api/stream');
+    es = new EventSource(bpath('/stream'));
     es.onopen = () => { retry = 0; };
     es.onmessage = (e) => {
       if (!e.data) return;

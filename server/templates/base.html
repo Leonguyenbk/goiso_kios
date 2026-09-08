@@ -29,6 +29,10 @@
   {% block head %}{% endblock %}
 </head>
 <body class="font-sans text-ink bg-paper antialiased">
+  {% if branch %}<script>
+    window.__BRANCH__ = {{ branch.code|tojson }};
+    window.__BRANCH_NAME__ = {{ branch.full_name|tojson }};
+  </script>{% endif %}
   {% block body %}{% endblock %}
   {% block scripts %}{% endblock %}
 </body>

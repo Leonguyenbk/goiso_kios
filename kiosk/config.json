@@ -1,5 +1,7 @@
 {
   "server_url": "http://127.0.0.1:5000",
+  "branch_code": "eakar",
+  "api_key": "",
   "printer_name": "",
   "paper_width_mm": 80,
   "preview_only": false,

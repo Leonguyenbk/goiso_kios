@@ -1,4 +1,4 @@
-import { connectStream, chime, speak, buildCallSentence, docSo, fmtTime } from './common.js';
+import { connectStream, bpath, chime, speak, buildCallSentence, docSo, fmtTime } from './common.js';
 
 const $ = (s) => document.querySelector(s);
 const WEEKDAYS = ['Chủ nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
@@ -28,7 +28,7 @@ function openGate() {
   const el = document.documentElement;
   if (el.requestFullscreen) el.requestFullscreen().catch(() => {});
   $('#gate').remove();
-  fetch('/api/config/public').then(r => r.json()).then(d => { cfg = { ...cfg, ...d.extra }; }).catch(() => {});
+  fetch(bpath('/config/public')).then(r => r.json()).then(d => { cfg = { ...cfg, ...d.extra }; }).catch(() => {});
 }
 $('#gate').addEventListener('click', openGate);
 window.addEventListener('keydown', () => { if ($('#gate')) openGate(); }, { once: true });

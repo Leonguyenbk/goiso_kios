@@ -29,7 +29,8 @@ FONT = CFG.get("font_family", "Arial")
 class KioskApp(ctk.CTk):
     def __init__(self):
         super().__init__()
-        self.api = ApiClient(CFG["server_url"])
+        self.api = ApiClient(CFG["server_url"], CFG.get("branch_code", ""),
+                             CFG.get("api_key", ""))
         self.services = {}
         self.extra = {}
         self.time_open = True
@@ -64,6 +65,11 @@ class KioskApp(ctk.CTk):
         self.lbl_hint = ctk.CTkLabel(head, text="Chạm vào ô dịch vụ để lấy số thứ tự",
                                      font=(FONT, 20), text_color="#d6e6f5")
         self.lbl_hint.pack(pady=(4, 6))
+        self.btn_checkin = ctk.CTkButton(
+            head, text="TÔI CÓ LỊCH HẸN — nhập mã", font=(FONT, 20, "bold"),
+            height=52, corner_radius=14, fg_color="#0a4c85", hover_color="#083b68",
+            command=self._open_checkin)
+        self.btn_checkin.pack(pady=(2, 8))
         self.lbl_clock = ctk.CTkLabel(head, text="", font=(FONT, 22, "bold"), text_color="#d6e6f5")
         self.lbl_clock.pack(pady=(0, 14))
 
@@ -168,6 +174,53 @@ class KioskApp(ctk.CTk):
     def _on_ticket(self, ticket):
         threading.Thread(target=self._print_ticket, args=(ticket,), daemon=True).start()
         self._show_confirm(ticket)
+
+    # ---------------------------------------------------------------- check-in lịch hẹn
+    def _open_checkin(self):
+        if self.busy:
+            return
+        self._clear_overlay()
+        self._overlay_kind = "checkin"
+        ov = ctk.CTkFrame(self, fg_color="#0b5fa5", corner_radius=0)
+        ov.place(relx=0, rely=0, relwidth=1, relheight=1)
+        ctk.CTkLabel(ov, text="NHẬP MÃ LỊCH HẸN", font=(FONT, 40, "bold"),
+                     text_color="white").pack(pady=(220, 6))
+        ctk.CTkLabel(ov, text="Mã gồm 8 ký tự đã nhận khi đặt lịch online (VD: ABCD-2345)",
+                     font=(FONT, 20), text_color="#d6e6f5").pack(pady=(0, 20))
+        ent = ctk.CTkEntry(ov, font=(FONT, 40, "bold"), width=520, height=90,
+                           justify="center")
+        ent.pack()
+        ent.focus_set()
+        msg = ctk.CTkLabel(ov, text="", font=(FONT, 22), text_color="#fecaca")
+        msg.pack(pady=14)
+
+        def submit():
+            code = ent.get().strip()
+            if not code:
+                return
+            self.busy = True
+            msg.configure(text="Đang kiểm tra...", text_color="#d6e6f5")
+
+            def work():
+                try:
+                    ticket = self.api.checkin(code)
+                    self.after(0, lambda: (self._clear_overlay(), self._on_ticket(ticket)))
+                except ApiError as e:
+                    self.after(0, lambda: msg.configure(text=str(e), text_color="#fecaca"))
+                finally:
+                    self.after(0, lambda: setattr(self, "busy", False))
+
+            threading.Thread(target=work, daemon=True).start()
+
+        ent.bind("<Return>", lambda e: submit())
+        row = ctk.CTkFrame(ov, fg_color="transparent")
+        row.pack(pady=20)
+        ctk.CTkButton(row, text="XÁC NHẬN", font=(FONT, 26, "bold"), height=70, width=240,
+                      fg_color="#16a34a", hover_color="#15803d", command=submit).pack(side="left", padx=10)
+        ctk.CTkButton(row, text="ĐÓNG", font=(FONT, 26, "bold"), height=70, width=200,
+                      fg_color="#334155", hover_color="#1e293b",
+                      command=self._clear_overlay).pack(side="left", padx=10)
+        self.overlay = ov
 
     def _print_ticket(self, ticket):
         try:

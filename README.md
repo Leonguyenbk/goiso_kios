@@ -1,18 +1,22 @@
-# Hệ thống bốc số & gọi số một cửa — Chi nhánh khu vực Ea Kar
+# Hệ thống bốc số & gọi số một cửa — **nhiều chi nhánh** + đặt lịch online
 
-Văn phòng Đăng ký đất đai — Chi nhánh khu vực Ea Kar.
+Một **máy chủ Flask + SQLite** duy nhất phục vụ **nhiều chi nhánh** (tối đa vài chục),
+mỗi chi nhánh có mã `code` riêng (`eakar`, `buondon`…). Toàn bộ dữ liệu (số thứ tự,
+quầy, cấu hình, lịch hẹn) tách theo `branch_id` — các chi nhánh không thấy dữ liệu
+của nhau.
 
-Gồm 3 phần chạy quanh **một máy chủ Flask + SQLite** (`hethong_goiso.db`):
+| Thành phần | Vị trí | Mở tại |
+|---|---|---|
+| **Máy chủ** | `server/` | `http://<máy-chủ>:5000` (thật: sau Cloudflare Tunnel) |
+| **Trang chủ** (chọn chi nhánh) | trình duyệt | `…/` |
+| **Máy bốc số** (kiosk cảm ứng) | `kiosk/` | chạy trên máy đặt ở sảnh từng chi nhánh |
+| **Máy gọi số** (bàn cán bộ) | trình duyệt | `…/b/<mã>/counter` |
+| **Màn hình hiển thị** (TV sảnh) | trình duyệt | `…/b/<mã>/display` · `…/b/<mã>/display/simple` |
+| **Quản trị tổng** | trình duyệt | `…/admin` |
+| **Đặt lịch hẹn online** (người dân) | trình duyệt | `…/dat-lich` · tra cứu `…/lich-hen/<token>` |
 
-| Phần | Vị trí | Công nghệ | Mở tại |
-|---|---|---|---|
-| **Máy chủ** | `server/` | Flask + SQLite + SSE | `http://<ip-máy-chủ>:5000` |
-| **Máy bốc số** (kiosk cảm ứng) | `kiosk/` | CustomTkinter + Pillow + in nhiệt 80mm | chạy trực tiếp trên máy đặt ở sảnh |
-| **Máy gọi số** (bàn cán bộ) | trình duyệt | trang web Tailwind | `…:5000/counter` |
-| **Màn hình hiển thị** (TV sảnh) | trình duyệt | trang web + đọc tiếng Việt (Web Speech) | `…:5000/display` |
-| **Quản trị** | trình duyệt | trang web | `…:5000/admin` |
-
-Realtime giữa các phần dùng **SSE** (`/api/stream`) — không cần F5.
+- Realtime **màn hình hiển thị** dùng **SSE** (`/api/b/<mã>/stream`).
+- **Bàn gọi số** và **kiosk** dùng **polling** (3 s / 20 s) — nhẹ khi có nhiều quầy.
 
 ---
 
@@ -21,185 +25,218 @@ Realtime giữa các phần dùng **SSE** (`/api/stream`) — không cần F5.
 Yêu cầu: Python 3.10+.
 
 ```bat
-:: Windows — nhấp đúp hoặc chạy trong CMD
 run_server.bat
 ```
 
-Hoặc thủ công:
+Lần đầu `run_server.bat` tự tạo CSDL `hethong_v2.db` + một chi nhánh mẫu `eakar`.
+Chạy như production (waitress) trừ khi đặt `GOISO_DEBUG=1` (Flask dev + reload).
 
-```bat
-cd server
-python -m pip install -r requirements.txt
-python app.py
-```
+### Biến môi trường
 
-Biến môi trường tuỳ chọn:
-
-- `GOISO_PORT` — cổng (mặc định `5000`)
-- `GOISO_DB` — đường dẫn file `.db` khác
-- `GOISO_SECRET` — khoá phiên Flask (nên đặt khi triển khai thật)
-- `GOISO_DEBUG=1` — bật chế độ debug
-
-Máy chủ tự tạo/di trú bảng khi khởi động (thêm 2 cột `time_issue`, `time_done`
-vào bảng `queue` — **không đụng dữ liệu cũ**).
+| Biến | Ý nghĩa |
+|---|---|
+| `GOISO_SECRET` | **bắt buộc khi triển khai thật** — khoá ký session Flask |
+| `GOISO_PORT` | cổng (mặc định `5000`, chỉ dùng ở chế độ dev) |
+| `GOISO_DB` | đường dẫn file `.db` khác |
+| `GOISO_DEBUG=1` | bật Flask dev server + tắt kiểm tra `X-Branch-Key` |
+| `GOISO_BASE_URL` | URL gốc công khai, ví dụ `https://goiso.tentinh.vn` (dựng link/QR) |
+| `TURNSTILE_SITE_KEY` / `TURNSTILE_SECRET` | Cloudflare Turnstile cho trang đặt lịch |
 
 ### Lệnh quản lý (`server/manage.py`)
 
 ```bat
 cd server
-python manage.py set-admin-pw MatKhauMoi   :: đặt lại mật khẩu trang /admin
-python manage.py reset-today                :: xoá toàn bộ số đã cấp trong ngày
-python manage.py show-config                :: xem cấu hình hiện tại
-python manage.py init                       :: chỉ tạo/di trú bảng
+python manage.py init                              :: tạo CSDL (+ chi nhánh mẫu nếu trống)
+python manage.py set-admin-pw <mật khẩu>           :: mật khẩu trang /admin (toàn hệ thống)
+python manage.py add-branch eakar "Ea Kar" "CHI NHÁNH KHU VỰC EA KAR" "địa chỉ"
+python manage.py seed-branches ..\branches.csv     :: tạo hàng loạt từ CSV (code,name,full_name,address)
+python manage.py list-branches                     :: xem chi nhánh + api_key + display_token
+python manage.py regen-key <mã>                    :: tạo lại API key kiosk
+python manage.py regen-display-token <mã>
+python manage.py reset-today [<mã>|all]            :: xoá số đã cấp hôm nay
+python manage.py show-config <mã>                  :: in cấu hình 1 chi nhánh
 ```
 
-> File `hethong_goiso.db` sẵn có đã chứa mật khẩu quản trị cũ. Chạy
-> `python manage.py set-admin-pw <mật khẩu>` **một lần** để đặt mật khẩu bạn biết.
-> (Trên CSDL mới hoàn toàn, mật khẩu mặc định là `admin123`.)
+> File mẫu `branches.csv` ở thư mục gốc có sẵn 24 dòng — sửa lại `name`/`full_name`
+> cho đúng rồi chạy `seed-branches`.
+
+Mật khẩu `/admin` mặc định trên CSDL mới: `admin123` — **đổi ngay**.
 
 ---
 
-## 2. Máy bốc số (kiosk)
+## 2. Mỗi chi nhánh cần cấu hình gì
+
+Vào `/admin` → tab **Chi nhánh**:
+
+- Thêm/sửa chi nhánh: **mã** (dùng trong URL, chỉ chữ thường/số/gạch), tên ngắn,
+  tên đầy đủ (hiện trên màn hình), địa chỉ, thứ tự, bật/tắt.
+- Mỗi chi nhánh tự sinh 2 khoá:
+  - **`api_key`** — kiosk của chi nhánh gửi kèm header `X-Branch-Key` khi lấy số.
+  - **`display_token`** — (tuỳ chọn) khoá mềm cho URL màn hình.
+
+Chọn chi nhánh ở thanh trên rồi chỉnh **Dịch vụ / Quầy / Cấu hình chung / Đặt lịch
+online** cho *riêng chi nhánh đó*. Tab **Thống kê** chọn "Tất cả" để xem bảng tổng
+hợp mọi chi nhánh.
+
+**Cấu hình chung** có thêm ô **Mã PIN quầy**: nếu đặt, màn hình "Vào ca" của
+`/b/<mã>/counter` sẽ yêu cầu PIN này (lớp chặn ứng dụng — vẫn nên dùng kèm
+Cloudflare Access, xem mục 6).
+
+---
+
+## 3. Máy bốc số (kiosk)
 
 ```bat
 run_kiosk.bat
 ```
 
-Hoặc:
-
-```bat
-cd kiosk
-python -m pip install -r requirements.txt
-python kiosk.py
-```
-
-Cấu hình tại `kiosk/config.json`:
+`kiosk/config.json`:
 
 | Khoá | Ý nghĩa |
 |---|---|
-| `server_url` | địa chỉ máy chủ, ví dụ `http://192.168.1.10:5000` |
-| `printer_name` | tên máy in nhiệt trong Windows; để `""` = máy in mặc định |
+| `server_url` | URL máy chủ, ví dụ `https://goiso.tentinh.vn` |
+| `branch_code` | **mã chi nhánh** của máy kiosk này, ví dụ `eakar` |
+| `api_key` | khoá `api_key` của chi nhánh (lấy từ `list-branches` hoặc trang /admin) |
+| `printer_name` | tên máy in nhiệt Windows; `""` = máy in mặc định |
 | `paper_width_mm` | `80` hoặc `58` |
-| `preview_only` | `true` = chỉ hiện cửa sổ xem trước, không in (dùng khi chưa nối máy in) |
-| `fullscreen` | `true` = toàn màn hình |
-| `columns` | số cột lưới nút dịch vụ |
-| `confirm_seconds` | thời gian hiện màn hình xác nhận số |
+| `preview_only` | `true` = chỉ xem trước, không in |
+| `fullscreen`, `columns`, `confirm_seconds` | như cũ |
 
-Phím tắt: `F11` bật/tắt toàn màn hình · `Ctrl+Shift+Q` thoát.
+Kiosk tự: ẩn dịch vụ tắt/hết lượt, chặn ngoài giờ, báo mất kết nối & tự nối lại.
+Nút **“TÔI CÓ LỊCH HẸN”** trên đầu màn hình: người dân nhập mã hẹn online → in phiếu
+số ngay (nếu đang trong khung giờ hẹn).
 
-Kiosk tự động:
-
-- Ẩn dịch vụ đã tắt / đã hết lượt trong ngày.
-- Chặn lấy số ngoài khung giờ (theo cấu hình `lock_time_enabled` + `time_slots`).
-- Hiện thông báo khi mất kết nối máy chủ và tự kết nối lại.
-
-Nếu thiếu `pywin32` hoặc bật `preview_only`, phiếu sẽ hiện ở **cửa sổ xem trước**
-thay vì in ra giấy.
+Phím tắt: `F11` toàn màn hình · `Ctrl+Shift+Q` thoát.
 
 ---
 
-## 3. Máy gọi số (bàn cán bộ) — `/counter`
+## 4. Máy gọi số — `/b/<mã>/counter`
 
-Mở `http://<ip-máy-chủ>:5000/counter` trên máy tính mỗi quầy.
-
-1. Chọn **quầy** + nhập **tên cán bộ** → *Vào ca*. (Ghi nhớ trên máy đó,
-   lần sau vào thẳng.)
-2. Thao tác:
-   - **GỌI TIẾP** (phím `Space`) — kết thúc số đang phục vụ và gọi số kế tiếp.
-   - **Gọi lại** (`R`) — phát lại thông báo số hiện tại lên màn hình + loa.
-   - **Hoàn thành** (`D`) — đánh dấu xong (không gọi số mới).
-   - **Vắng** — đánh dấu khách không có mặt.
-   - **Tạm dừng / Tiếp tục** — quầy nghỉ tạm.
-   - **Gọi số cụ thể** — nhập `A-25` để gọi đúng số đó.
-3. Bảng phải: số đang chờ của quầy, đã xử lý, hàng chờ chi tiết, lịch sử.
-
-Mỗi lần gọi/gọi lại sẽ đẩy sự kiện tới **mọi màn hình hiển thị** đang mở.
+1. Chọn **quầy** + nhập **tên cán bộ** (+ **PIN** nếu chi nhánh bật) → *Vào ca*.
+   (Ghi nhớ trên máy đó.)
+2. **GỌI TIẾP** (`Space`) · **Gọi lại** (`R`) · **Hoàn thành** (`D`) · **Vắng** ·
+   **Tạm dừng** · **Gọi số cụ thể** (`A-25`).
+3. Bảng phải: đang phục vụ, hàng chờ (số online có nhãn **HẸN**), lịch sử.
 
 ---
 
-## 4. Màn hình hiển thị — `/display`
+## 5. Màn hình hiển thị — `/b/<mã>/display`
 
-Mở toàn màn hình trên TV/đầu phát ở sảnh. Lần đầu **chạm/nhấn phím bất kỳ**
-để bật âm thanh + toàn màn hình (chính sách trình duyệt).
+Mở toàn màn hình trên TV. Lần đầu **chạm/nhấn phím** để bật âm thanh + toàn màn hình.
+Cần cài **giọng tiếng Việt của Windows** để đọc số.
 
-Bố cục:
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│ [logo] VĂN PHÒNG ĐĂNG KÝ ĐẤT ĐAI            07:45:27         │
-│        CHI NHÁNH KHU VỰC EA KAR             Thứ Ba, 8/9/2026 │
-├──────────────────────────┬──────────────────────────────────┤
-│  MỜI QUÝ KHÁCH            │  QUẦY 1  ● Đang phục vụ           │
-│                          │  A-002  Trả kết quả              │
-│      A-002               │  QUẦY 2  ● Đang phục vụ           │
-│   xin mời đến             │  B-001  Biến động đất đai        │
-│     QUẦY 1               │  QUẦY 3 … QUẦY 6                  │
-│  TRẢ KẾT QUẢ …           │  (số hiện tại mỗi quầy, cán bộ)   │
-├──────────────────────────┴──────────────────────────────────┤
-│ ĐÃ GỌI GẦN ĐÂY  A-001›Q1  A-002›Q1  B-001›Q2 …               │
-├─────────────────────────────────────────────────────────────┤
-│ ĐANG CHỜ  A:1  B:1  D:0  E:0        Tổng lượt hôm nay: 5     │
-└─────────────────────────────────────────────────────────────┘
-```
-
-- Khi có lượt gọi: ô **spotlight** bên trái đổi sang số mới (hiệu ứng trượt),
-  thẻ quầy tương ứng **nhấp nháy**, phát **chuông** rồi **đọc tiếng Việt**
-  (lặp 2 lần): *"Mời số A, không không hai, đến quầy số một"*.
-- Cần cài sẵn **giọng tiếng Việt của Windows** (Cài đặt → Thời gian & ngôn ngữ →
-  Giọng nói → thêm giọng *Tiếng Việt (Microsoft An / HoaiMy / NamMinh)*).
-  Không có giọng Việt thì chỉ có chuông, không đọc.
-
-Biến thể:
-
-- `/display?nocursor=1` — ẩn con trỏ chuột.
-- `/display?counters=1,3,5` — chỉ hiện các quầy chỉ định.
-- `/display/simple` — chế độ **một số cực lớn** (màn hình nhỏ / phụ).
+Biến thể: `?nocursor=1` · `?counters=1,3,5` · `/b/<mã>/display/simple` (một số cực lớn).
 
 ---
 
-## 5. Trang quản trị — `/admin`
+## 6. Triển khai thật qua Cloudflare Tunnel
 
-Đăng nhập bằng mật khẩu quản trị (xem mục 1). Các thẻ:
+Máy chủ chỉ nghe `127.0.0.1:5000`; Cloudflare Tunnel đưa ra Internet, không cần mở
+cổng vào máy.
 
-- **Dịch vụ** — mã (A, B…), tên đầy đủ, tên rút gọn (hiển thị trên thẻ quầy),
-  màu, giới hạn số/ngày, bật/tắt.
-- **Quầy** — tên quầy, mã dịch vụ phục vụ (nhiều mã cách nhau bằng dấu phẩy,
-  ví dụ `A,B`), cán bộ mặc định, thứ tự, bật/tắt.
-- **Cấu hình chung** — tên cơ quan/chi nhánh, link QR, khoá theo giờ + khung giờ,
-  tốc độ/độ lặp giọng đọc, mẫu câu đọc, thời gian giữ spotlight, đổi mật khẩu.
-- **Thống kê** — hôm nay theo dịch vụ, thời gian chờ trung bình, lượt khách 30 ngày,
-  nút **Reset toàn bộ số hôm nay**.
+### 6.1. cloudflared
 
-Nhấn **Lưu cấu hình** để áp dụng (đẩy ngay tới các màn hình đang mở).
+```bat
+:: cài (winget) rồi đăng nhập
+winget install --id Cloudflare.cloudflared
+cloudflared tunnel login
+cloudflared tunnel create goiso
+```
+
+`C:\Users\<user>\.cloudflared\config.yml`:
+
+```yaml
+tunnel: goiso
+credentials-file: C:\Users\<user>\.cloudflared\<UUID>.json
+ingress:
+  - hostname: goiso.tentinh.vn
+    service: http://localhost:5000
+    originRequest:
+      # SSE: giữ kết nối stream lâu
+      disableChunkedEncoding: false
+      connectTimeout: 30s
+  - service: http_status:404
+```
+
+```bat
+cloudflared tunnel route dns goiso goiso.tentinh.vn
+cloudflared service install      :: chạy nền như Windows service
+```
+
+Đặt `GOISO_BASE_URL=https://goiso.tentinh.vn` và `GOISO_SECRET=<chuỗi ngẫu nhiên>`
+(vào **System Properties → Environment Variables**, hoặc đầu `run_server.bat`).
+
+### 6.2. Cloudflare Access (Zero Trust) — chặn quầy & quản trị
+
+Đặt **Access Application** cho các đường dẫn nội bộ, chỉ cho email cán bộ:
+
+- `goiso.tentinh.vn/admin*`
+- `goiso.tentinh.vn/b/*/counter*`
+
+**Không** đặt Access cho: `/`, `/b/*/display*`, `/api/b/*/stream`,
+`/api/b/*/config/public`, `/dat-lich`, `/lich-hen/*`, `/api/booking/*`
+(màn hình sảnh và trang người dân phải mở).
+
+Kiosk gọi API kèm `X-Branch-Key` nên không cần qua Access; giữ nguyên đường
+`/api/b/<mã>/ticket`, `/api/b/<mã>/checkin` mở (đã có khoá riêng).
+
+### 6.3. Turnstile cho trang đặt lịch
+
+Tạo site Turnstile (domain `goiso.tentinh.vn`), lấy **Site key** + **Secret key**,
+đặt vào `TURNSTILE_SITE_KEY` / `TURNSTILE_SECRET`. Bật/tắt theo chi nhánh ở tab
+**Đặt lịch online**. Nếu chưa cấu hình secret, máy chủ bỏ qua bước xác thực (chỉ nên
+dùng khi chạy thử).
 
 ---
 
-## Sơ đồ triển khai gợi ý
+## 7. Đặt lịch hẹn online (bốc số theo khung giờ)
+
+Bật ở `/admin` → **Đặt lịch online** cho từng chi nhánh:
+
+- `windows` — các khung nhận đặt trong ngày, `[{"start":"07:30","end":"11:00"}]`
+- `slot_minutes` — độ dài mỗi khung (mặc định 30)
+- `capacity_per_slot` — sức chứa mỗi khung theo dịch vụ, `{"_default":4,"A":6}`
+- `open_days_ahead` — cho đặt trước tối đa mấy ngày (mặc định 3)
+- `max_active_per_cccd` — số lịch **đang chờ** tối đa mỗi CCCD (mặc định 1)
+- `checkin_grace_minutes` — ân hạn check-in trước/sau khung giờ (mặc định 15)
+- `online_priority` — nếu bật, số đã check-in từ lịch hẹn được gọi trước khách vãng lai
+
+**Luồng người dân:** `/dat-lich` → chọn chi nhánh → thủ tục → ngày → khung giờ →
+nhập họ tên + CCCD + SĐT (+ Turnstile) → nhận **mã hẹn** + **QR**. Đến kiosk, bấm
+**“TÔI CÓ LỊCH HẸN”**, nhập mã (hoặc quét QR mở `/lich-hen/<token>`) trong khoảng
+`[giờ bắt đầu − ân hạn, giờ kết thúc + ân hạn]` → in phiếu số thật, số vào hàng chờ
+như bình thường (`source = online`).
+
+Lịch hẹn quá giờ mà không check-in sẽ tự chuyển **hết hạn** (tác vụ nền chạy mỗi 5′).
+Người dân xem/huỷ tại `/lich-hen/<token>`.
+
+---
+
+## 8. Sơ đồ triển khai
 
 ```
-                 ┌───────────────┐
-                 │  MÁY CHỦ      │  server/app.py  (LAN, cổng 5000)
-                 │  Flask+SQLite │
-                 └───┬───┬───┬───┘
-        SSE + REST   │   │   │
-      ┌──────────────┘   │   └───────────────┐
-┌─────┴──────┐   ┌───────┴────────┐   ┌──────┴───────┐
-│ KIOSK      │   │ 6 × MÁY GỌI SỐ │   │ TV HIỂN THỊ  │
-│ bốc số     │   │ /counter       │   │ /display     │
-│ (CustomTk) │   │ (trình duyệt)  │   │ (trình duyệt)│
-└────────────┘   └────────────────┘   └──────────────┘
+                    Internet ──► Cloudflare ──► cloudflared (Windows)
+                                   │  (Access chặn /admin, /b/*/counter)
+                                   ▼
+                        MÁY CHỦ  server/app.py  (127.0.0.1:5000, waitress)
+                        Flask + SQLite (hethong_v2.db)
+        SSE(display) / polling(counter,kiosk) / REST
+   ┌──────────────┬──────────────────────────┬─────────────────────────┐
+ 24 × KIOSK      24 × TV /b/<mã>/display   nhiều × /b/<mã>/counter    /dat-lich
+ (branch_code +   (SSE, đọc TV)             (polling 3s + PIN)        (người dân + Turnstile)
+  api_key)
 ```
 
-- Đặt **cổng tường lửa 5000** cho phép LAN.
-- Máy gọi số & TV chỉ cần trình duyệt (Chrome/Edge), trỏ tới IP máy chủ.
-- Kiosk cần Python + máy in nhiệt.
+---
 
-## Ghi chú kỹ thuật
+## 9. Ghi chú kỹ thuật
 
-- Máy chủ dùng server phát triển của Flask (`threaded=True`) — đủ cho một chi nhánh
-  (vài chục kết nối). Muốn chắc chắn hơn có thể chạy sau `waitress`
-  (`waitress-serve --threads=8 --call app:create_app` — cần bọc thêm factory)
-  hoặc để nguyên nếu tải nhẹ.
-- Số thứ tự đánh theo **từng mã dịch vụ, theo ngày** (`A-001`, `A-002`, `B-001`…),
-  tự bắt đầu lại từ 1 mỗi ngày.
-- Toàn bộ trạng thái nằm trong `hethong_goiso.db` — sao lưu file này là đủ.
+- Số thứ tự đánh theo **`(chi nhánh, mã dịch vụ, ngày)`** — `A-001`, `A-002`… tự
+  bắt đầu lại mỗi ngày, độc lập giữa các chi nhánh.
+- Máy chủ chạy dưới **waitress** (`--threads=32`) — đủ cho vài chục chi nhánh với
+  tải bốc số thông thường. SSE chỉ dùng cho `/display` nên số kết nối bền ≈ số TV.
+- Toàn bộ trạng thái nằm trong `hethong_v2.db` — **sao lưu file này là đủ** (kèm
+  `-wal`/`-shm` nếu có). File này không đưa vào git.
+- Muốn tải rất lớn / nhiều tiến trình về sau: tách sang PostgreSQL (lớp truy cập
+  gói trong `server/db.py`).
+- Chưa tích hợp gửi SMS/Zalo cho lịch hẹn — người dân tự lưu mã hẹn / QR.

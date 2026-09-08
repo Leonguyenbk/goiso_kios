@@ -16,6 +16,9 @@ server/.env
 *.db-shm
 *.db-journal
 
+# CSDL đa chi nhánh (dữ liệu chạy thật — sao lưu riêng, không đưa vào git)
+hethong_v2.db
+
 # Tệp phát sinh khi chạy
 kiosk/ticket_demo.png
 kiosk/*.preview.png

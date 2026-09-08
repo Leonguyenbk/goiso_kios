@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lịch hẹn của bạn</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>body{font-family:'Be Vietnam Pro',system-ui,sans-serif}</style>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen">
+  <script>window.__TOKEN__ = {{ token|tojson }};</script>
+  <main class="max-w-md mx-auto p-5">
+    <div id="card" class="bg-white rounded-2xl border border-slate-200 p-6 mt-6">
+      <div id="loading" class="text-slate-500 text-sm">Đang tải…</div>
+      <div id="body" class="hidden">
+        <div class="text-sm text-slate-500">Mã lịch hẹn</div>
+        <div id="code" class="text-3xl font-extrabold tracking-widest font-mono my-1">—</div>
+        <div id="status" class="inline-block text-xs font-semibold rounded px-2 py-1"></div>
+        <dl class="mt-4 text-sm space-y-1">
+          <div class="flex justify-between"><dt class="text-slate-500">Chi nhánh</dt><dd id="v-branch" class="font-semibold text-right"></dd></div>
+          <div class="flex justify-between"><dt class="text-slate-500">Thủ tục</dt><dd id="v-svc" class="text-right"></dd></div>
+          <div class="flex justify-between"><dt class="text-slate-500">Ngày hẹn</dt><dd id="v-date" class="font-semibold text-right"></dd></div>
+          <div class="flex justify-between"><dt class="text-slate-500">Khung giờ</dt><dd id="v-slot" class="font-semibold text-right"></dd></div>
+          <div class="flex justify-between"><dt class="text-slate-500">Người hẹn</dt><dd id="v-name" class="text-right"></dd></div>
+          <div id="row-qno" class="flex justify-between hidden"><dt class="text-slate-500">Số thứ tự</dt><dd id="v-qno" class="font-extrabold text-right"></dd></div>
+        </dl>
+        <div id="qr" class="flex justify-center my-4"></div>
+        <button id="btn-cancel" class="w-full border border-red-300 text-red-600 rounded-lg py-2.5 text-sm font-semibold hidden">Huỷ lịch hẹn</button>
+        <a href="/dat-lich" class="block text-center mt-3 text-[#0b5fa5] underline text-sm">Đặt lịch mới</a>
+      </div>
+      <div id="err" class="hidden text-red-600 text-sm"></div>
+    </div>
+  </main>
+  <script type="module" src="{{ url_for('static', filename='js/booking_lookup.js') }}"></script>
+</body>
+</html>

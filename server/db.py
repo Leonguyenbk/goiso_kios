@@ -1,22 +1,27 @@
-"""Truy cập CSDL SQLite cho hệ thống bốc số / gọi số một cửa.
+"""Truy cập CSDL SQLite cho hệ thống bốc số / gọi số — bản ĐA CHI NHÁNH.
 
-Dùng lại nguyên schema có sẵn trong hethong_goiso.db, chỉ bổ sung thêm 2 cột
-time_issue / time_done cho bảng queue (migration không phá dữ liệu cũ).
+CSDL mới (`hethong_v2.db`), không dùng lại dữ liệu bản 1 chi nhánh.
+Mọi dữ liệu nghiệp vụ (queue, counters_status, config, visitor_stats,
+appointments) đều gắn `branch_id`. `config.branch_id = 0` là cấu hình toàn cục
+(hiện chỉ có `admin_password`).
 """
 import json
 import os
+import secrets
 import sqlite3
 import threading
 from datetime import datetime
 
-# hethong_goiso.db nằm ở thư mục gốc dự án (cha của thư mục server/)
+# hethong_v2.db nằm ở thư mục gốc dự án (cha của thư mục server/)
 DB_PATH = os.environ.get(
     "GOISO_DB",
-    os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "hethong_goiso.db"),
+    os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "hethong_v2.db"),
 )
 
 # SQLite ghi tuần tự; khoá này bảo vệ các thao tác đọc-sửa-ghi phức hợp
 LOCK = threading.RLock()
+
+GLOBAL = 0  # branch_id cho cấu hình toàn cục
 
 
 def get_conn():
@@ -24,6 +29,7 @@ def get_conn():
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA busy_timeout=8000")
+    conn.execute("PRAGMA foreign_keys=ON")
     return conn
 
 
@@ -32,60 +38,118 @@ def _column_names(conn, table):
 
 
 def init_db():
-    """Tạo bảng nếu chưa có + bổ sung cột mới. An toàn khi gọi nhiều lần."""
+    """Tạo bảng nếu chưa có. An toàn khi gọi nhiều lần."""
     with LOCK, get_conn() as conn:
         conn.execute(
+            """CREATE TABLE IF NOT EXISTS branches
+                 (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  code TEXT UNIQUE NOT NULL,
+                  name TEXT NOT NULL,
+                  full_name TEXT NOT NULL,
+                  address TEXT DEFAULT '',
+                  active INTEGER DEFAULT 1,
+                  display_order INTEGER DEFAULT 99,
+                  api_key TEXT NOT NULL,
+                  display_token TEXT NOT NULL,
+                  created_at TEXT)"""
+        )
+        conn.execute(
             """CREATE TABLE IF NOT EXISTS queue
-                 (id INTEGER PRIMARY KEY AUTOINCREMENT, prefix TEXT, number INTEGER,
-                  status TEXT, counter TEXT, staff_name TEXT, agency TEXT, time_start TEXT, date_record TEXT,
-                  fullname TEXT, cccd TEXT, session TEXT, phone TEXT, file_path TEXT, file_name TEXT,
-                  file_path2 TEXT, file_name2 TEXT)"""
+                 (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  branch_id INTEGER NOT NULL,
+                  prefix TEXT, number INTEGER,
+                  status TEXT, counter TEXT DEFAULT '', staff_name TEXT DEFAULT '',
+                  date_record TEXT,
+                  time_issue TEXT, time_start TEXT, time_done TEXT,
+                  fullname TEXT DEFAULT '', cccd TEXT DEFAULT '', phone TEXT DEFAULT '',
+                  session TEXT DEFAULT '',
+                  source TEXT DEFAULT 'kiosk',
+                  priority INTEGER DEFAULT 0,
+                  appointment_id INTEGER)"""
         )
         conn.execute(
             """CREATE TABLE IF NOT EXISTS counters_status
-                 (counter_id TEXT PRIMARY KEY, staff_name TEXT, status TEXT, last_num TEXT, last_update TEXT)"""
+                 (branch_id INTEGER NOT NULL,
+                  counter_id TEXT NOT NULL,
+                  staff_name TEXT DEFAULT '', status TEXT DEFAULT 'offline',
+                  last_num TEXT DEFAULT '', last_update TEXT,
+                  PRIMARY KEY (branch_id, counter_id))"""
         )
-        conn.execute("CREATE TABLE IF NOT EXISTS config (key TEXT PRIMARY KEY, value TEXT)")
         conn.execute(
-            "CREATE TABLE IF NOT EXISTS visitor_stats (date_record TEXT PRIMARY KEY, count INTEGER DEFAULT 0)"
+            """CREATE TABLE IF NOT EXISTS config
+                 (branch_id INTEGER NOT NULL DEFAULT 0,
+                  key TEXT NOT NULL, value TEXT,
+                  PRIMARY KEY (branch_id, key))"""
         )
-
-        cols = _column_names(conn, "queue")
-        if "time_issue" not in cols:
-            conn.execute("ALTER TABLE queue ADD COLUMN time_issue TEXT")
-        if "time_done" not in cols:
-            conn.execute("ALTER TABLE queue ADD COLUMN time_done TEXT")
+        conn.execute(
+            """CREATE TABLE IF NOT EXISTS visitor_stats
+                 (branch_id INTEGER NOT NULL, date_record TEXT NOT NULL,
+                  count INTEGER DEFAULT 0,
+                  PRIMARY KEY (branch_id, date_record))"""
+        )
+        conn.execute(
+            """CREATE TABLE IF NOT EXISTS appointments
+                 (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  branch_id INTEGER NOT NULL,
+                  prefix TEXT NOT NULL,
+                  slot_date TEXT NOT NULL, slot_start TEXT NOT NULL, slot_end TEXT NOT NULL,
+                  code TEXT NOT NULL, token TEXT NOT NULL UNIQUE,
+                  citizen_name TEXT DEFAULT '', cccd TEXT DEFAULT '', phone TEXT DEFAULT '',
+                  status TEXT DEFAULT 'booked',
+                  created_at TEXT, checkin_at TEXT,
+                  queue_id INTEGER, ip TEXT DEFAULT '')"""
+        )
 
         conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_queue_day ON queue(date_record, prefix, status, number)"
+            "CREATE INDEX IF NOT EXISTS idx_queue_main "
+            "ON queue(branch_id, date_record, prefix, status, number)"
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_queue_counter "
+            "ON queue(branch_id, date_record, counter, status)"
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_appt_slot "
+            "ON appointments(branch_id, slot_date, prefix, status)"
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_appt_code ON appointments(branch_id, code)"
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_appt_cccd ON appointments(branch_id, cccd, status)"
         )
 
-        _seed_defaults(conn)
+        existing = {row[0] for row in conn.execute(
+            "SELECT key FROM config WHERE branch_id=0"
+        )}
+        if "admin_password" not in existing:
+            conn.execute("INSERT INTO config(branch_id, key, value) VALUES(0, 'admin_password', ?)",
+                         (DEFAULT_ADMIN_PW,))
+    _invalidate_branch_cache()
 
 
+# --------------------------------------------------------------- mẫu cấu hình
 DEFAULT_COUNTERS = {
     "Quầy số 01": {"active": True, "staff": "", "prefix": "A", "display_order": 1},
     "Quầy số 02": {"active": True, "staff": "", "prefix": "B", "display_order": 2},
-    "Quầy số 03": {"active": True, "staff": "", "prefix": "C", "display_order": 3},
-    "Quầy số 04": {"active": True, "staff": "", "prefix": "D", "display_order": 4},
-    "Quầy số 05": {"active": True, "staff": "", "prefix": "E", "display_order": 5},
-    "Quầy số 06": {"active": True, "staff": "", "prefix": "F", "display_order": 6},
+    "Quầy số 03": {"active": True, "staff": "", "prefix": "A,B", "display_order": 3},
+    "Quầy số 04": {"active": True, "staff": "", "prefix": "A,B", "display_order": 4},
 }
 
 DEFAULT_SERVICES = {
     "A": {"name": "TRẢ KẾT QUẢ GIẢI QUYẾT THỦ TỤC HÀNH CHÍNH", "short": "Trả kết quả",
-          "color": "#27ae60", "daily_limit": 200, "current_count": 0, "active": True},
+          "color": "#27ae60", "daily_limit": 200, "active": True},
     "B": {"name": "ĐĂNG KÝ BIẾN ĐỘNG ĐẤT ĐAI", "short": "Biến động đất đai",
-          "color": "#3498db", "daily_limit": 150, "current_count": 0, "active": True},
+          "color": "#3498db", "daily_limit": 150, "active": True},
 }
 
 DEFAULT_EXTRA = {
     "ten_co_quan": "VĂN PHÒNG ĐĂNG KÝ ĐẤT ĐAI",
-    "ten_chi_nhanh": "CHI NHÁNH KHU VỰC EA KAR",
-    "link_qr": "https://eakartoday.vn",
+    "link_qr": "",
     "logo_path": "",
     "qr_enabled": False,
     "background_color": "#f5f7fa",
+    "counter_pin": "",  # PIN "Vào ca" cho /counter; "" = không yêu cầu
     "lock_time_enabled": True,
     "time_slots": [
         {"start_hour": 6, "start_minute": 15, "end_hour": 11, "end_minute": 15},
@@ -96,42 +160,41 @@ DEFAULT_EXTRA = {
     "allow_sunday": False,
     "voice_rate": 0.95,
     "voice_repeat": 2,
-    # Mẫu câu đọc; {so} = A không hai lăm, {quay} = một
     "voice_template": "Mời số {so}, đến quầy số {quay}",
     "spotlight_seconds": 20,
     "recent_count": 8,
+}
+
+DEFAULT_BOOKING = {
+    "enabled": False,
+    "open_days_ahead": 3,
+    "slot_minutes": 30,
+    "windows": [
+        {"start": "07:30", "end": "11:00"},
+        {"start": "13:30", "end": "16:00"},
+    ],
+    "capacity_per_slot": {"_default": 4},
+    "max_active_per_cccd": 1,
+    "checkin_grace_minutes": 15,
+    "online_priority": False,
+    "turnstile": True,
 }
 
 # Mật khẩu quản trị mặc định: "admin123" (sha256). Đổi trong trang /admin.
 DEFAULT_ADMIN_PW = "240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9"
 
 
-def _seed_defaults(conn):
-    existing = {row[0] for row in conn.execute("SELECT key FROM config")}
-    if "counters" not in existing:
-        conn.execute("INSERT INTO config VALUES ('counters', ?)",
-                     (json.dumps(DEFAULT_COUNTERS, ensure_ascii=False),))
-    if "services" not in existing:
-        conn.execute("INSERT INTO config VALUES ('services', ?)",
-                     (json.dumps(DEFAULT_SERVICES, ensure_ascii=False),))
-    if "extra" not in existing:
-        conn.execute("INSERT INTO config VALUES ('extra', ?)",
-                     (json.dumps(DEFAULT_EXTRA, ensure_ascii=False),))
-    if "admin_password" not in existing:
-        conn.execute("INSERT INTO config VALUES ('admin_password', ?)", (DEFAULT_ADMIN_PW,))
-
-
 # ---------------------------------------------------------------- config helpers
-def get_config(key, default=None):
+def get_config(key, default=None, branch_id=GLOBAL):
     with get_conn() as conn:
-        row = conn.execute("SELECT value FROM config WHERE key=?", (key,)).fetchone()
-    if row is None:
-        return default
-    return row[0]
+        row = conn.execute(
+            "SELECT value FROM config WHERE branch_id=? AND key=?", (branch_id, key)
+        ).fetchone()
+    return default if row is None else row[0]
 
 
-def get_json_config(key, default=None):
-    raw = get_config(key)
+def get_json_config(key, default=None, branch_id=GLOBAL):
+    raw = get_config(key, None, branch_id)
     if raw is None:
         return default
     try:
@@ -140,28 +203,166 @@ def get_json_config(key, default=None):
         return default
 
 
-def set_json_config(key, obj):
+def set_json_config(key, obj, branch_id=GLOBAL):
+    set_config(key, json.dumps(obj, ensure_ascii=False), branch_id)
+
+
+def set_config(key, value, branch_id=GLOBAL):
     with LOCK, get_conn() as conn:
         conn.execute(
-            "INSERT INTO config(key, value) VALUES(?, ?) "
-            "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
-            (key, json.dumps(obj, ensure_ascii=False)),
+            "INSERT INTO config(branch_id, key, value) VALUES(?, ?, ?) "
+            "ON CONFLICT(branch_id, key) DO UPDATE SET value=excluded.value",
+            (branch_id, key, value),
         )
 
 
-def set_config(key, value):
-    with LOCK, get_conn() as conn:
-        conn.execute(
-            "INSERT INTO config(key, value) VALUES(?, ?) "
-            "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
-            (key, value),
-        )
-
-
-def get_extra():
+def get_extra(branch_id):
     data = dict(DEFAULT_EXTRA)
-    data.update(get_json_config("extra", {}) or {})
+    data.update(get_json_config("extra", {}, branch_id) or {})
     return data
+
+
+def get_booking_config(branch_id):
+    data = dict(DEFAULT_BOOKING)
+    data.update(get_json_config("booking", {}, branch_id) or {})
+    return data
+
+
+# ---------------------------------------------------------------- branch helpers
+_branch_cache = {}          # code -> dict
+_branch_cache_by_id = {}    # id   -> dict
+_branch_cache_lock = threading.Lock()
+
+
+def _invalidate_branch_cache():
+    with _branch_cache_lock:
+        _branch_cache.clear()
+        _branch_cache_by_id.clear()
+
+
+def _row_to_branch(row):
+    return {
+        "id": row["id"], "code": row["code"], "name": row["name"],
+        "full_name": row["full_name"], "address": row["address"] or "",
+        "active": bool(row["active"]), "display_order": row["display_order"],
+        "api_key": row["api_key"], "display_token": row["display_token"],
+        "created_at": row["created_at"],
+    }
+
+
+def get_branch(code):
+    code = (code or "").strip().lower()
+    if not code:
+        return None
+    with _branch_cache_lock:
+        if code in _branch_cache:
+            return _branch_cache[code]
+    with get_conn() as conn:
+        row = conn.execute("SELECT * FROM branches WHERE code=?", (code,)).fetchone()
+    b = _row_to_branch(row) if row else None
+    with _branch_cache_lock:
+        _branch_cache[code] = b
+        if b:
+            _branch_cache_by_id[b["id"]] = b
+    return b
+
+
+def get_branch_by_id(branch_id):
+    with _branch_cache_lock:
+        if branch_id in _branch_cache_by_id:
+            return _branch_cache_by_id[branch_id]
+    with get_conn() as conn:
+        row = conn.execute("SELECT * FROM branches WHERE id=?", (branch_id,)).fetchone()
+    b = _row_to_branch(row) if row else None
+    if b:
+        with _branch_cache_lock:
+            _branch_cache_by_id[branch_id] = b
+            _branch_cache[b["code"]] = b
+    return b
+
+
+def list_branches(active_only=False):
+    q = "SELECT * FROM branches"
+    if active_only:
+        q += " WHERE active=1"
+    q += " ORDER BY display_order, code"
+    with get_conn() as conn:
+        return [_row_to_branch(r) for r in conn.execute(q)]
+
+
+def gen_token(nbytes=24):
+    return secrets.token_urlsafe(nbytes)
+
+
+def create_branch(code, name, full_name, address="", display_order=None):
+    """Tạo chi nhánh mới + seed cấu hình mặc định cho chi nhánh đó."""
+    code = (code or "").strip().lower()
+    if not code or not code.replace("-", "").replace("_", "").isalnum():
+        raise ValueError("Mã chi nhánh chỉ gồm chữ/số/gạch, ví dụ 'eakar'.")
+    with LOCK, get_conn() as conn:
+        if conn.execute("SELECT 1 FROM branches WHERE code=?", (code,)).fetchone():
+            raise ValueError(f"Chi nhánh '{code}' đã tồn tại.")
+        if display_order is None:
+            mx = conn.execute("SELECT COALESCE(MAX(display_order), 0) FROM branches").fetchone()[0]
+            display_order = mx + 1
+        cur = conn.execute(
+            """INSERT INTO branches
+                 (code, name, full_name, address, active, display_order,
+                  api_key, display_token, created_at)
+               VALUES (?, ?, ?, ?, 1, ?, ?, ?, ?)""",
+            (code, name.strip(), full_name.strip(), address.strip(), display_order,
+             gen_token(24), gen_token(16), now_str()),
+        )
+        bid = cur.lastrowid
+        for key, obj in (("services", DEFAULT_SERVICES), ("counters", DEFAULT_COUNTERS),
+                         ("extra", {}), ("booking", {})):
+            conn.execute(
+                "INSERT INTO config(branch_id, key, value) VALUES(?, ?, ?)",
+                (bid, key, json.dumps(obj, ensure_ascii=False)),
+            )
+    _invalidate_branch_cache()
+    return get_branch(code)
+
+
+def update_branch(code, **fields):
+    allowed = {"name", "full_name", "address", "active", "display_order"}
+    sets, vals = [], []
+    for k, v in fields.items():
+        if k in allowed:
+            sets.append(f"{k}=?")
+            vals.append(int(v) if k in ("active", "display_order") else str(v).strip())
+    if not sets:
+        return get_branch(code)
+    vals.append((code or "").strip().lower())
+    with LOCK, get_conn() as conn:
+        conn.execute(f"UPDATE branches SET {', '.join(sets)} WHERE code=?", vals)
+    _invalidate_branch_cache()
+    return get_branch(code)
+
+
+def regen_branch_field(code, field):
+    if field not in ("api_key", "display_token"):
+        raise ValueError("field phải là api_key hoặc display_token.")
+    token = gen_token(24 if field == "api_key" else 16)
+    with LOCK, get_conn() as conn:
+        conn.execute(f"UPDATE branches SET {field}=? WHERE code=?",
+                     (token, (code or "").strip().lower()))
+    _invalidate_branch_cache()
+    return token
+
+
+def delete_branch(code):
+    code = (code or "").strip().lower()
+    with LOCK, get_conn() as conn:
+        row = conn.execute("SELECT id FROM branches WHERE code=?", (code,)).fetchone()
+        if not row:
+            return
+        bid = row["id"]
+        for t in ("queue", "counters_status", "visitor_stats", "appointments"):
+            conn.execute(f"DELETE FROM {t} WHERE branch_id=?", (bid,))
+        conn.execute("DELETE FROM config WHERE branch_id=?", (bid,))
+        conn.execute("DELETE FROM branches WHERE id=?", (bid,))
+    _invalidate_branch_cache()
 
 
 # ---------------------------------------------------------------- domain helpers

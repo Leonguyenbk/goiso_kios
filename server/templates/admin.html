@@ -1,11 +1,25 @@
-{% extends "base.html" %}
-{% block title %}Quản trị — {{ extra.ten_chi_nhanh }}{% endblock %}
-{% block body %}
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Quản trị — Hệ thống gọi số một cửa</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = { theme: { extend: { colors: {
+      gov: { DEFAULT: '#0b5fa5', 700: '#094a82', 50: '#eef5fb' }, ink: '#16202b', paper: '#f5f7fa',
+    } } } };
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+  <style>body{font-family:'Be Vietnam Pro',system-ui,sans-serif}.tnum{font-variant-numeric:tabular-nums}</style>
+</head>
+<body class="font-sans text-ink bg-paper antialiased">
 <div class="min-h-screen">
   <header class="bg-gov text-white px-5 py-3 flex items-center gap-4">
-    <div class="font-extrabold">Quản trị hệ thống gọi số</div>
-    <a href="/display" class="ml-auto text-sm underline opacity-90">Màn hình</a>
-    <a href="/counter" class="text-sm underline opacity-90">Bàn gọi số</a>
+    <div class="font-extrabold">Quản trị hệ thống gọi số — nhiều chi nhánh</div>
+    <a href="/" class="ml-auto text-sm underline opacity-90">Trang chủ</a>
     <button id="btn-logout" class="btn bg-white/15 hover:bg-white/25 px-3 py-1.5 text-sm hidden">Đăng xuất</button>
   </header>
 
@@ -21,15 +35,43 @@
   </div>
 
   <!-- Bảng điều khiển -->
-  <main id="panel" class="hidden max-w-5xl mx-auto p-5 space-y-6">
+  <main id="panel" class="hidden max-w-6xl mx-auto p-5 space-y-5">
     <nav class="flex gap-2 flex-wrap">
-      <button data-tab="services" class="tab btn bg-gov text-white px-4 py-2">Dịch vụ</button>
+      <button data-tab="branches" class="tab btn bg-gov text-white px-4 py-2">Chi nhánh</button>
+      <button data-tab="services" class="tab btn bg-white border px-4 py-2">Dịch vụ</button>
       <button data-tab="counters" class="tab btn bg-white border px-4 py-2">Quầy</button>
       <button data-tab="extra" class="tab btn bg-white border px-4 py-2">Cấu hình chung</button>
+      <button data-tab="booking" class="tab btn bg-white border px-4 py-2">Đặt lịch online</button>
       <button data-tab="stats" class="tab btn bg-white border px-4 py-2">Thống kê</button>
     </nav>
 
-    <section data-panel="services" class="space-y-3">
+    <!-- Thanh chọn chi nhánh (áp dụng cho Dịch vụ / Quầy / Cấu hình chung) -->
+    <div id="branch-bar" class="hidden bg-white border border-slate-200 rounded-xl px-4 py-3 flex items-center gap-3 flex-wrap">
+      <span class="text-sm font-semibold">Đang cấu hình chi nhánh:</span>
+      <select id="sel-branch" class="border border-slate-300 rounded-lg px-3 py-1.5 text-sm"></select>
+      <a id="lnk-display" target="_blank" class="text-sm text-gov underline">↗ Màn hình</a>
+      <a id="lnk-counter" target="_blank" class="text-sm text-gov underline">↗ Bàn gọi số</a>
+      <span id="cfg-msg" class="ml-auto text-sm"></span>
+    </div>
+
+    <!-- TAB: Chi nhánh -->
+    <section data-panel="branches" class="space-y-3">
+      <div class="flex justify-between items-center">
+        <h2 class="font-bold text-lg">Danh sách chi nhánh</h2>
+        <button id="add-branch" class="btn bg-white border px-3 py-1.5 text-sm">+ Thêm chi nhánh</button>
+      </div>
+      <div class="overflow-x-auto"><table class="w-full text-sm border-collapse" id="tbl-branch">
+        <thead><tr class="text-left border-b bg-slate-50">
+          <th class="p-2">Mã (URL)</th><th class="p-2">Tên ngắn</th><th class="p-2">Tên đầy đủ</th>
+          <th class="p-2">Địa chỉ</th><th class="p-2">TT</th><th class="p-2">Bật</th>
+          <th class="p-2">Khoá kiosk / display</th><th></th>
+        </tr></thead><tbody></tbody>
+      </table></div>
+      <p class="text-xs text-slate-400">Mã chi nhánh chỉ gồm chữ thường, số, gạch (vd <code>eakar</code>). Dùng trong đường dẫn <code>/b/&lt;mã&gt;/display</code>.</p>
+    </section>
+
+    <!-- TAB: Dịch vụ -->
+    <section data-panel="services" class="hidden space-y-3">
       <div class="flex justify-between items-center"><h2 class="font-bold text-lg">Dịch vụ</h2>
         <button id="add-svc" class="btn bg-white border px-3 py-1.5 text-sm">+ Thêm dịch vụ</button></div>
       <div class="overflow-x-auto"><table class="w-full text-sm border-collapse" id="tbl-svc">
@@ -40,6 +82,7 @@
       </table></div>
     </section>
 
+    <!-- TAB: Quầy -->
     <section data-panel="counters" class="hidden space-y-3">
       <div class="flex justify-between items-center"><h2 class="font-bold text-lg">Quầy</h2>
         <button id="add-cnt" class="btn bg-white border px-3 py-1.5 text-sm">+ Thêm quầy</button></div>
@@ -51,30 +94,53 @@
       </table></div>
     </section>
 
+    <!-- TAB: Cấu hình chung -->
     <section data-panel="extra" class="hidden space-y-3">
       <h2 class="font-bold text-lg">Cấu hình chung</h2>
       <div class="grid sm:grid-cols-2 gap-3" id="extra-fields"></div>
       <label class="block text-sm font-semibold mt-3">Khung giờ lấy số (JSON)</label>
       <textarea id="extra-slots" class="w-full border rounded-lg p-2 font-mono text-xs h-24"></textarea>
-      <label class="block text-sm font-semibold mt-3">Đổi mật khẩu quản trị (để trống nếu không đổi)</label>
+      <label class="block text-sm font-semibold mt-3">Đổi mật khẩu quản trị TỔNG (để trống nếu không đổi)</label>
       <input id="new-pw" type="password" class="border rounded-lg px-3 py-2 w-full sm:w-80" placeholder="Mật khẩu mới">
     </section>
 
-    <section data-panel="stats" class="hidden space-y-4">
-      <h2 class="font-bold text-lg">Thống kê hôm nay</h2>
-      <div id="stats-today" class="text-sm"></div>
-      <button id="btn-reset" class="btn bg-red-600 hover:bg-red-700 text-white px-4 py-2">Reset toàn bộ số hôm nay</button>
-      <h3 class="font-semibold mt-4">Lượt khách 30 ngày gần nhất</h3>
-      <div id="stats-visitors" class="text-sm"></div>
+    <!-- TAB: Đặt lịch online -->
+    <section data-panel="booking" class="hidden space-y-3">
+      <h2 class="font-bold text-lg">Đặt lịch online (bốc số theo khung giờ)</h2>
+      <div class="grid sm:grid-cols-2 gap-3" id="bk-fields"></div>
+      <label class="block text-sm font-semibold mt-2">Khung giờ nhận đặt lịch (JSON) — <code>[{"start":"07:30","end":"11:00"}]</code></label>
+      <textarea id="bk-windows" class="w-full border rounded-lg p-2 font-mono text-xs h-20"></textarea>
+      <label class="block text-sm font-semibold mt-2">Sức chứa mỗi khung theo dịch vụ (JSON) — <code>{"_default":4,"A":6}</code></label>
+      <textarea id="bk-caps" class="w-full border rounded-lg p-2 font-mono text-xs h-16"></textarea>
+
+      <div class="mt-4 flex items-center gap-3 flex-wrap">
+        <h3 class="font-semibold">Danh sách lịch hẹn</h3>
+        <input type="date" id="bk-date" class="border rounded-lg px-2 py-1 text-sm">
+        <button id="bk-load" class="btn bg-white border px-3 py-1 text-sm">Xem</button>
+      </div>
+      <div id="bk-appts" class="text-sm overflow-x-auto"></div>
     </section>
 
-    <div class="sticky bottom-0 bg-paper/95 backdrop-blur py-3 flex gap-3 border-t">
-      <button id="btn-save" class="btn bg-gov hover:bg-gov-700 text-white px-6 py-2.5">Lưu cấu hình</button>
+    <!-- TAB: Thống kê -->
+    <section data-panel="stats" class="hidden space-y-4">
+      <div class="flex items-center gap-3 flex-wrap">
+        <h2 class="font-bold text-lg">Thống kê hôm nay</h2>
+        <select id="sel-stats-branch" class="border border-slate-300 rounded-lg px-3 py-1.5 text-sm"></select>
+      </div>
+      <div id="stats-body" class="text-sm"></div>
+      <div id="stats-visitors-wrap" class="hidden">
+        <h3 class="font-semibold mt-4">Lượt khách 30 ngày gần nhất</h3>
+        <div id="stats-visitors" class="text-sm"></div>
+      </div>
+      <button id="btn-reset" class="btn bg-red-600 hover:bg-red-700 text-white px-4 py-2 hidden">Reset toàn bộ số hôm nay (chi nhánh đang chọn)</button>
+    </section>
+
+    <div id="save-bar" class="sticky bottom-0 bg-paper/95 backdrop-blur py-3 flex gap-3 border-t">
+      <button id="btn-save" class="btn bg-gov hover:bg-gov-700 text-white px-6 py-2.5">Lưu cấu hình chi nhánh</button>
       <span id="save-msg" class="self-center text-sm"></span>
     </div>
   </main>
 </div>
-{% endblock %}
-{% block scripts %}
 <script type="module" src="{{ url_for('static', filename='js/admin.js') }}"></script>
-{% endblock %}
+</body>
+</html>

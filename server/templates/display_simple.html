@@ -32,7 +32,7 @@ function gate() {
   audioReady = true; chime();
   if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(() => {});
   $('#gate').remove();
-  fetch('/api/config/public').then(r => r.json()).then(d => cfg = { ...cfg, ...d.extra }).catch(() => {});
+  fetch('/api/b/' + window.__BRANCH__ + '/config/public').then(r => r.json()).then(d => cfg = { ...cfg, ...d.extra }).catch(() => {});
 }
 $('#gate').addEventListener('click', gate);
 window.addEventListener('keydown', () => { if ($('#gate')) gate(); }, { once: true });
