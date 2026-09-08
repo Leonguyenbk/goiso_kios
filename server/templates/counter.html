@@ -1,34 +1,30 @@
 {% extends "base.html" %}
 {% block title %}Bàn gọi số — {{ extra.ten_chi_nhanh }}{% endblock %}
 {% block body %}
-<div class="min-h-screen flex flex-col" style="padding-bottom:2rem">
+<div class="min-h-screen flex flex-col" style="padding-bottom:3.4rem">
+  <script>window.__ME__ = {{ me.full_name|tojson }};</script>
   <header class="bg-gov text-white px-5 py-3 flex items-center gap-4">
     <div class="font-extrabold text-lg">{{ extra.ten_chi_nhanh }}</div>
     <div class="ml-auto flex items-center gap-3 text-sm">
+      <span class="opacity-90">CB: <b>{{ me.full_name }}</b></span>
       <span id="conn" class="hidden rounded-full bg-red-500 px-3 py-1 font-semibold">Mất kết nối…</span>
       <span id="clock" class="font-mono tnum font-bold text-base"></span>
       <button id="btn-switch" class="btn bg-white/15 hover:bg-white/25 px-3 py-1.5 text-sm">Đổi quầy</button>
+      <a href="/login" onclick="fetch('/api/logout',{method:'POST'})" class="btn bg-white/15 hover:bg-white/25 px-3 py-1.5 text-sm">Đăng xuất</a>
     </div>
   </header>
 
   <!-- Chọn quầy -->
   <div id="setup" class="flex-1 flex items-center justify-center p-6">
     <div class="w-full max-w-md bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
-      <h1 class="text-xl font-bold mb-1">Đăng nhập bàn gọi số</h1>
-      <p class="text-slate-500 text-sm mb-4">Chọn quầy và nhập tên cán bộ trực.</p>
+      <h1 class="text-xl font-bold mb-1">Vào ca — {{ me.full_name }}</h1>
+      <p class="text-slate-500 text-sm mb-4">Chọn quầy bạn đang ngồi.</p>
       <label class="block text-sm font-semibold mb-1">Quầy</label>
-      <select id="sel-counter" class="w-full border border-slate-300 rounded-lg px-3 py-2 mb-3">
+      <select id="sel-counter" class="w-full border border-slate-300 rounded-lg px-3 py-2 mb-4">
         {% for c in counters %}
-        <option value="{{ c.id }}">{{ c.id }} — {{ c.prefix }}{% if c.staff %} ({{ c.staff }}){% endif %}</option>
+        <option value="{{ c.id }}">{{ c.id }} — {{ c.prefix }}</option>
         {% endfor %}
       </select>
-      <label class="block text-sm font-semibold mb-1">Tên cán bộ</label>
-      <input id="inp-staff" class="w-full border border-slate-300 rounded-lg px-3 py-2 mb-4" placeholder="VD: Nguyễn Văn A">
-      <div id="pin-wrap" class="{% if not pin_required %}hidden{% endif %}">
-        <label class="block text-sm font-semibold mb-1">Mã PIN quầy</label>
-        <input id="inp-pin" type="password" inputmode="numeric" autocomplete="off"
-               class="w-full border border-slate-300 rounded-lg px-3 py-2 mb-4" placeholder="PIN chi nhánh cấp">
-      </div>
       <button id="btn-login" class="btn bg-gov hover:bg-gov-700 text-white w-full py-3 text-lg">Vào ca</button>
       <p id="setup-err" class="text-red-600 text-sm mt-2 hidden"></p>
     </div>
@@ -92,5 +88,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script type="module" src="{{ url_for('static', filename='js/counter.js') }}?v=5"></script>
+<script type="module" src="{{ url_for('static', filename='js/counter.js') }}?v=6"></script>
 {% endblock %}

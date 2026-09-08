@@ -118,6 +118,17 @@ def init_db():
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_appt_cccd ON appointments(branch_id, cccd, status)"
         )
+        conn.execute(
+            """CREATE TABLE IF NOT EXISTS users
+                 (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  username TEXT UNIQUE NOT NULL,
+                  full_name TEXT NOT NULL,
+                  password_hash TEXT NOT NULL,
+                  role TEXT NOT NULL DEFAULT 'staff',    -- 'staff' | 'admin'
+                  branch_id INTEGER,                     -- NULL với admin
+                  active INTEGER DEFAULT 1,
+                  created_at TEXT)"""
+        )
 
         existing = {row[0] for row in conn.execute(
             "SELECT key FROM config WHERE branch_id=0"
@@ -125,6 +136,16 @@ def init_db():
         if "admin_password" not in existing:
             conn.execute("INSERT INTO config(branch_id, key, value) VALUES(0, 'admin_password', ?)",
                          (DEFAULT_ADMIN_PW,))
+        # Seed tài khoản admin 'admin' dùng chính mật khẩu quản trị hiện có.
+        if not conn.execute("SELECT 1 FROM users WHERE role='admin'").fetchone():
+            pw = conn.execute(
+                "SELECT value FROM config WHERE branch_id=0 AND key='admin_password'"
+            ).fetchone()
+            conn.execute(
+                "INSERT INTO users(username, full_name, password_hash, role, branch_id, created_at) "
+                "VALUES('admin', 'Quản trị hệ thống', ?, 'admin', NULL, ?)",
+                (pw[0] if pw else DEFAULT_ADMIN_PW, now_str()),
+            )
     _invalidate_branch_cache()
 
 
@@ -370,8 +391,124 @@ def delete_branch(code):
         for t in ("queue", "counters_status", "visitor_stats", "appointments"):
             conn.execute(f"DELETE FROM {t} WHERE branch_id=?", (bid,))
         conn.execute("DELETE FROM config WHERE branch_id=?", (bid,))
+        conn.execute("DELETE FROM users WHERE branch_id=?", (bid,))
         conn.execute("DELETE FROM branches WHERE id=?", (bid,))
     _invalidate_branch_cache()
+
+
+# ---------------------------------------------------------------- người dùng
+def _pw_hash(pw):
+    import hashlib
+    return hashlib.sha256((pw or "").encode("utf-8")).hexdigest()
+
+
+def _row_to_user(r):
+    if not r:
+        return None
+    b = get_branch_by_id(r["branch_id"]) if r["branch_id"] else None
+    return {
+        "id": r["id"], "username": r["username"], "full_name": r["full_name"],
+        "role": r["role"], "branch_id": r["branch_id"],
+        "branch_code": b["code"] if b else None,
+        "branch_name": b["full_name"] if b else None,
+        "active": bool(r["active"]), "created_at": r["created_at"],
+    }
+
+
+def get_user_by_username(username):
+    with get_conn() as conn:
+        r = conn.execute("SELECT * FROM users WHERE username=?",
+                         ((username or "").strip().lower(),)).fetchone()
+    return _row_to_user(r)
+
+
+def get_user(uid):
+    with get_conn() as conn:
+        r = conn.execute("SELECT * FROM users WHERE id=?", (uid,)).fetchone()
+    return _row_to_user(r)
+
+
+def verify_login(username, password):
+    """Trả về dict user nếu đúng tài khoản + đang bật; ngược lại None."""
+    with get_conn() as conn:
+        r = conn.execute("SELECT * FROM users WHERE username=?",
+                         ((username or "").strip().lower(),)).fetchone()
+    if not r or not r["active"]:
+        return None
+    if _pw_hash(password) != r["password_hash"]:
+        return None
+    return _row_to_user(r)
+
+
+def list_users():
+    with get_conn() as conn:
+        rows = conn.execute(
+            "SELECT * FROM users ORDER BY role DESC, branch_id, username"
+        ).fetchall()
+    return [_row_to_user(r) for r in rows]
+
+
+def create_user(username, full_name, password, role="staff", branch_code=None):
+    username = (username or "").strip().lower()
+    if not username or not username.replace("_", "").replace(".", "").replace("-", "").isalnum():
+        raise ValueError("Tên đăng nhập chỉ gồm chữ thường/số/._- .")
+    if not (full_name or "").strip():
+        raise ValueError("Thiếu họ tên.")
+    if not (password or "").strip():
+        raise ValueError("Thiếu mật khẩu.")
+    role = "admin" if role == "admin" else "staff"
+    bid = None
+    if role == "staff":
+        b = get_branch(branch_code)
+        if not b:
+            raise ValueError("Nhân viên phải thuộc một chi nhánh hợp lệ.")
+        bid = b["id"]
+    with LOCK, get_conn() as conn:
+        if conn.execute("SELECT 1 FROM users WHERE username=?", (username,)).fetchone():
+            raise ValueError(f"Tên đăng nhập '{username}' đã tồn tại.")
+        conn.execute(
+            "INSERT INTO users(username, full_name, password_hash, role, branch_id, created_at) "
+            "VALUES(?, ?, ?, ?, ?, ?)",
+            (username, full_name.strip(), _pw_hash(password), role, bid, now_str()),
+        )
+    return get_user_by_username(username)
+
+
+def update_user(username, full_name=None, password=None, branch_code=None,
+                role=None, active=None):
+    username = (username or "").strip().lower()
+    sets, vals = [], []
+    if full_name is not None and full_name.strip():
+        sets.append("full_name=?"); vals.append(full_name.strip())
+    if password:
+        sets.append("password_hash=?"); vals.append(_pw_hash(password))
+    if role in ("staff", "admin"):
+        sets.append("role=?"); vals.append(role)
+        if role == "admin":
+            sets.append("branch_id=NULL")
+    if branch_code is not None and (role != "admin"):
+        b = get_branch(branch_code)
+        if not b:
+            raise ValueError("Chi nhánh không hợp lệ.")
+        sets.append("branch_id=?"); vals.append(b["id"])
+    if active is not None:
+        sets.append("active=?"); vals.append(1 if active else 0)
+    if not sets:
+        return get_user_by_username(username)
+    vals.append(username)
+    with LOCK, get_conn() as conn:
+        conn.execute(f"UPDATE users SET {', '.join(sets)} WHERE username=?", vals)
+    return get_user_by_username(username)
+
+
+def delete_user(username):
+    username = (username or "").strip().lower()
+    with LOCK, get_conn() as conn:
+        n = conn.execute("SELECT COUNT(*) FROM users WHERE role='admin'").fetchone()[0]
+        r = conn.execute("SELECT role FROM users WHERE username=?", (username,)).fetchone()
+        if r and r["role"] == "admin" and n <= 1:
+            raise ValueError("Không thể xoá tài khoản admin cuối cùng.")
+        conn.execute("DELETE FROM users WHERE username=?", (username,))
 
 
 # ---------------------------------------------------------------- domain helpers

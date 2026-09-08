@@ -6,6 +6,7 @@ async function api(path, opts = {}) {
     headers: { 'Content-Type': 'application/json' }, ...opts,
     body: opts.body ? JSON.stringify(opts.body) : undefined,
   });
+  if (res.status === 401 || res.status === 403) { location.href = '/login?next=/admin'; throw new Error('Cần đăng nhập'); }
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || ('Lỗi ' + res.status));
   return data;
@@ -33,20 +34,11 @@ const EXTRA_NUM = {
   spotlight_seconds: 'Giữ spotlight (giây)', recent_count: 'Số lượt hiển thị gần đây',
 };
 
-/* -------------------------------------------------- đăng nhập */
-$('#btn-login').addEventListener('click', login);
-$('#inp-pw').addEventListener('keydown', (e) => { if (e.key === 'Enter') login(); });
-async function login() {
-  try {
-    await api('/api/admin/login', { method: 'POST', body: { password: $('#inp-pw').value } });
-    $('#login').classList.add('hidden');
-    $('#panel').classList.remove('hidden');
-    $('#btn-logout').classList.remove('hidden');
-    await loadBranches();
-    activateTab('branches');
-  } catch (e) { const el = $('#login-err'); el.textContent = e.message; el.classList.remove('hidden'); }
-}
-$('#btn-logout').addEventListener('click', async () => { await api('/api/admin/logout', { method: 'POST' }); location.reload(); });
+/* -------------------------------------------------- đăng xuất */
+$('#btn-logout').addEventListener('click', async () => {
+  try { await fetch('/api/logout', { method: 'POST' }); } catch (_) {}
+  location.href = '/login';
+});
 
 /* -------------------------------------------------- tabs */
 $$('.tab').forEach(b => b.addEventListener('click', () => activateTab(b.dataset.tab)));
@@ -61,7 +53,61 @@ function activateTab(tab) {
   $('#branch-bar').classList.toggle('hidden', !isCfg);
   $('#save-bar').classList.toggle('hidden', !isCfg);
   if (tab === 'stats') loadStats();
+  if (tab === 'users') loadUsers();
 }
+
+/* -------------------------------------------------- người dùng */
+let userBranches = [];
+async function loadUsers() {
+  const d = await api('/api/admin/users');
+  userBranches = d.branches;
+  const tb = $('#tbl-user tbody');
+  tb.innerHTML = '';
+  d.users.forEach(u => tb.appendChild(userRow(u)));
+}
+function branchOptions(sel) {
+  return '<option value="">— (admin, không cần) —</option>' +
+    userBranches.map(b => `<option value="${b.code}" ${b.code === sel ? 'selected' : ''}>${esc(b.name)}</option>`).join('');
+}
+function userRow(u) {
+  const tr = document.createElement('tr');
+  tr.className = 'border-b';
+  const isNew = !u.username;
+  tr.innerHTML = `
+    <td class="p-1"><input value="${esc(u.username)}" class="u-name w-32 border rounded px-2 py-1 font-mono lowercase" ${isNew ? '' : 'readonly'}></td>
+    <td class="p-1"><input value="${esc(u.full_name)}" class="u-full w-56 border rounded px-2 py-1"></td>
+    <td class="p-1"><select class="u-role border rounded px-2 py-1">
+      <option value="staff" ${u.role !== 'admin' ? 'selected' : ''}>staff</option>
+      <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>admin</option></select></td>
+    <td class="p-1"><select class="u-branch border rounded px-2 py-1">${branchOptions(u.branch_code)}</select></td>
+    <td class="p-1"><input type="text" class="u-pw w-32 border rounded px-2 py-1" placeholder="${isNew ? 'bắt buộc' : 'để trống = giữ'}"></td>
+    <td class="p-1 text-center"><input type="checkbox" class="u-active w-5 h-5" ${u.active !== false ? 'checked' : ''}></td>
+    <td class="p-1 whitespace-nowrap">
+      <button class="u-save btn bg-gov text-white px-2 py-1 text-xs">${isNew ? 'Tạo' : 'Lưu'}</button>
+      ${isNew ? '' : '<button class="u-del text-red-600 text-xs ml-1">Xoá</button>'}
+    </td>`;
+  tr.querySelector('.u-save').addEventListener('click', async () => {
+    const body = {
+      action: isNew ? 'create' : 'update',
+      username: tr.querySelector('.u-name').value.trim().toLowerCase(),
+      full_name: tr.querySelector('.u-full').value.trim(),
+      role: tr.querySelector('.u-role').value,
+      branch_code: tr.querySelector('.u-branch').value || null,
+      password: tr.querySelector('.u-pw').value,
+      active: tr.querySelector('.u-active').checked,
+    };
+    try { await api('/api/admin/users', { method: 'POST', body }); await loadUsers(); }
+    catch (e) { alert(e.message); }
+  });
+  if (!isNew) tr.querySelector('.u-del').addEventListener('click', async () => {
+    if (!confirm(`Xoá tài khoản "${u.username}"?`)) return;
+    try { await api('/api/admin/users', { method: 'POST', body: { action: 'delete', username: u.username } }); await loadUsers(); }
+    catch (e) { alert(e.message); }
+  });
+  return tr;
+}
+$('#add-user').addEventListener('click', () =>
+  $('#tbl-user tbody').appendChild(userRow({ username: '', full_name: '', role: 'staff', branch_code: '', active: true })));
 
 /* -------------------------------------------------- chi nhánh */
 async function loadBranches() {
@@ -311,10 +357,9 @@ $('#btn-save').addEventListener('click', async () => {
   const payload = { services, counters, extra };
   try { payload.booking = collectBooking(); }
   catch (_) { return msg('Cấu hình đặt lịch (JSON) không hợp lệ.', true); }
-  if ($('#new-pw').value.trim()) payload.new_password = $('#new-pw').value.trim();
   try {
     await api(`/api/admin/b/${encodeURIComponent(curCode)}/config`, { method: 'POST', body: payload });
-    msg('Đã lưu chi nhánh ' + curCode + '.'); $('#new-pw').value = '';
+    msg('Đã lưu chi nhánh ' + curCode + '.');
     await loadBranchConfig(curCode);
   } catch (e) { msg(e.message, true); }
 });
@@ -364,12 +409,8 @@ async function loadStats() {
     s.visitors.map(v => `<tr class="border-b"><td class="p-1.5">${v.date}</td><td class="p-1.5 text-right font-mono">${v.count}</td></tr>`).join('') + '</tbody></table>';
 }
 
-/* -------------------------------------------------- thử phiên cũ */
+/* -------------------------------------------------- khởi động (đã đăng nhập server-side) */
 (async () => {
-  try {
-    await api('/api/admin/branches');
-    $('#login').classList.add('hidden'); $('#panel').classList.remove('hidden');
-    $('#btn-logout').classList.remove('hidden');
-    await loadBranches(); activateTab('branches');
-  } catch (_) { /* chưa đăng nhập */ }
+  await loadBranches();
+  activateTab('branches');
 })();

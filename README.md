@@ -110,13 +110,32 @@ Phím tắt: `F11` toàn màn hình · `Ctrl+Shift+Q` thoát.
 
 ---
 
-## 4. Máy gọi số — `/b/<mã>/counter`
+## 4. Tài khoản & máy gọi số — `/b/<mã>/counter`
 
-1. Chọn **quầy** + nhập **tên cán bộ** (+ **PIN** nếu chi nhánh bật) → *Vào ca*.
-   (Ghi nhớ trên máy đó.)
-2. **GỌI TIẾP** (`Space`) · **Gọi lại** (`R`) · **Hoàn thành** (`D`) · **Vắng** ·
-   **Tạm dừng** · **Gọi số cụ thể** (`A-25`).
-3. Bảng phải: đang phục vụ, hàng chờ (số online có nhãn **HẸN**), lịch sử.
+Máy gọi số **bắt buộc đăng nhập** (`/login`). Hai vai trò:
+
+| Vai trò | Quyền |
+|---|---|
+| **admin** | Xem/sửa toàn hệ thống (`/admin`), quản lý người dùng |
+| **staff** | Chỉ vào được `/b/<chi-nhánh-của-mình>/counter`; chi nhánh khác → 403 |
+
+Tài khoản `admin` được tạo sẵn khi khởi tạo CSDL (mật khẩu = mật khẩu quản trị
+mặc định `admin123` — đổi ngay trong `/admin` → tab **Người dùng**).
+
+Tạo tài khoản nhân viên: `/admin` → **Người dùng** → *+ Thêm người dùng*
+(tên đăng nhập, họ tên, mật khẩu, chi nhánh). Hoặc dòng lệnh:
+```
+python manage.py add-user nvhoan "Nguyễn Văn Hoàn" MatKhau123 eakar
+python manage.py list-users
+python manage.py set-user-pw nvhoan MatKhauMoi
+```
+
+Nhân viên đăng nhập → tự vào trang quầy chi nhánh mình → **chọn quầy đang ngồi** →
+*Vào ca* (họ tên lấy từ tài khoản). Thao tác: **GỌI TIẾP** (`Space`) · **Gọi lại**
+(`R`) · **Hoàn thành** (`D`) · **Vắng** · **Tạm dừng** · **Gọi số cụ thể** (`A-25`).
+
+> Trang **màn hình TV** (`/b/<mã>/display`) và **đặt lịch** (`/dat-lich`) không yêu
+> cầu đăng nhập (màn hình là thiết bị đặt tại chỗ; đặt lịch là trang công dân).
 
 ---
 

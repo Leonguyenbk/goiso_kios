@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Đăng nhập — Hệ thống gọi số một cửa</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>body{font-family:'Be Vietnam Pro',system-ui,sans-serif}</style>
+</head>
+<body class="bg-slate-100 min-h-screen flex items-center justify-center p-4 text-slate-800">
+  <div class="w-full max-w-sm bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+    <div class="text-center mb-5">
+      <div class="text-sm font-semibold text-[#0b5fa5]">HỆ THỐNG GỌI SỐ MỘT CỬA</div>
+      <h1 class="text-xl font-extrabold mt-1">Đăng nhập</h1>
+    </div>
+    <label class="block text-sm font-semibold mb-1">Tên đăng nhập</label>
+    <input id="u" autocomplete="username" class="w-full border border-slate-300 rounded-lg px-3 py-2 mb-3">
+    <label class="block text-sm font-semibold mb-1">Mật khẩu</label>
+    <input id="p" type="password" autocomplete="current-password" class="w-full border border-slate-300 rounded-lg px-3 py-2 mb-4">
+    <button id="btn" class="w-full bg-[#0b5fa5] hover:bg-[#094a82] text-white rounded-lg py-2.5 font-semibold">Đăng nhập</button>
+    <p id="err" class="text-red-600 text-sm mt-3 hidden"></p>
+  </div>
+
+  <script>
+    const $ = s => document.querySelector(s);
+    const nextUrl = new URLSearchParams(location.search).get('next') || '';
+    async function login() {
+      $('#err').classList.add('hidden');
+      try {
+        const r = await fetch('/api/login', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: $('#u').value.trim(), password: $('#p').value }),
+        });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.error || 'Đăng nhập thất bại');
+        location.href = (nextUrl && nextUrl !== 'None' && nextUrl.startsWith('/')) ? nextUrl : d.next;
+      } catch (e) { $('#err').textContent = e.message; $('#err').classList.remove('hidden'); }
+    }
+    $('#btn').addEventListener('click', login);
+    $('#p').addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
+    $('#u').addEventListener('keydown', e => { if (e.key === 'Enter') $('#p').focus(); });
+    $('#u').focus();
+  </script>
+  {% include '_credit.html' %}
+</body>
+</html>

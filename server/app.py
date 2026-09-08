@@ -98,13 +98,27 @@ def require_branch_key(view):
     return wrapper
 
 
-def counter_guard(view):
-    """Nếu chi nhánh có cấu hình PIN quầy, yêu cầu đã 'Vào ca' đúng PIN."""
+def current_user():
+    uid = session.get("uid")
+    if not uid:
+        return None
+    u = db.get_user(uid)
+    return u if (u and u["active"]) else None
+
+
+def _need_login_response(msg="Cần đăng nhập."):
+    if request.path.startswith("/api/"):
+        return jsonify(error=msg), 401
+    return redirect(url_for("page_login", next=request.path))
+
+
+def login_required(view):
     @functools.wraps(view)
     def wrapper(*args, **kwargs):
-        pin = (db.get_extra(g.branch["id"]).get("counter_pin") or "").strip()
-        if pin and not session.get(f"counter_ok:{g.branch['code']}"):
-            return jsonify(error="Cần nhập đúng mã PIN quầy (Vào ca lại)."), 401
+        u = current_user()
+        if not u:
+            return _need_login_response()
+        g.user = u
         return view(*args, **kwargs)
     return wrapper
 
@@ -112,8 +126,30 @@ def counter_guard(view):
 def admin_required(view):
     @functools.wraps(view)
     def wrapper(*args, **kwargs):
-        if session.get("is_admin") is not True:
-            return jsonify(error="Chưa đăng nhập quản trị."), 401
+        u = current_user()
+        if not u:
+            return _need_login_response("Chưa đăng nhập quản trị.")
+        if u["role"] != "admin":
+            if request.path.startswith("/api/"):
+                return jsonify(error="Chỉ quản trị viên."), 403
+            return "Chỉ quản trị viên mới truy cập được trang này.", 403
+        g.user = u
+        return view(*args, **kwargs)
+    return wrapper
+
+
+def counter_guard(view):
+    """Yêu cầu đăng nhập; nhân viên chỉ thao tác trên chi nhánh của mình."""
+    @functools.wraps(view)
+    def wrapper(*args, **kwargs):
+        u = current_user()
+        if not u:
+            return _need_login_response()
+        if u["role"] != "admin" and u["branch_id"] != g.branch["id"]:
+            if request.path.startswith("/api/"):
+                return jsonify(error="Bạn không thuộc chi nhánh này."), 403
+            return "Bạn không có quyền truy cập chi nhánh này.", 403
+        g.user = u
         return view(*args, **kwargs)
     return wrapper
 
@@ -199,6 +235,7 @@ def page_display_simple():
 
 @app.route("/b/<code>/counter")
 @resolve_branch
+@counter_guard
 def page_counter():
     counters = db.get_json_config("counters", {}, g.branch["id"]) or {}
     active = [
@@ -206,14 +243,57 @@ def page_counter():
         for k, v in sorted(counters.items(), key=lambda kv: kv[1].get("display_order", 99))
         if v.get("active", True)
     ]
-    extra = _tpl_ctx(g.branch)
-    return render_template("counter.html", extra=extra, branch=g.branch, counters=active,
-                           pin_required=bool((extra.get("counter_pin") or "").strip()))
+    return render_template("counter.html", extra=_tpl_ctx(g.branch), branch=g.branch,
+                           counters=active, me=g.user)
 
 
 @app.route("/admin")
+@admin_required
 def page_admin():
-    return render_template("admin.html")
+    return render_template("admin.html", me=g.user)
+
+
+# ----------------------------------------------------------------- đăng nhập
+@app.route("/login")
+def page_login():
+    if current_user():
+        u = current_user()
+        if u["role"] == "admin":
+            return redirect(url_for("page_admin"))
+        b = db.get_branch_by_id(u["branch_id"])
+        if b:
+            return redirect(f"/b/{b['code']}/counter")
+    return render_template("login.html")
+
+
+@app.post("/api/login")
+def api_login():
+    body = request.get_json(silent=True) or {}
+    u = db.verify_login(body.get("username", ""), body.get("password", ""))
+    if not u:
+        return jsonify(error="Sai tên đăng nhập hoặc mật khẩu."), 401
+    session.clear()
+    session["uid"] = u["id"]
+    session["role"] = u["role"]
+    session.permanent = True
+    if u["role"] == "admin":
+        nxt = "/admin"
+    else:
+        b = db.get_branch_by_id(u["branch_id"])
+        nxt = f"/b/{b['code']}/counter" if b else "/"
+    return jsonify(ok=True, role=u["role"], full_name=u["full_name"], next=nxt)
+
+
+@app.post("/api/logout")
+def api_logout():
+    session.clear()
+    return jsonify(ok=True)
+
+
+@app.get("/api/me")
+def api_me():
+    u = current_user()
+    return jsonify(u or {})
 
 
 @app.route("/dat-lich")
@@ -344,24 +424,22 @@ def api_config_public():
 
 
 # ----------------------------------------------------------------- API quầy
+def _staff():
+    return (getattr(g, "user", None) or {}).get("full_name", "")
+
+
 @app.get("/api/b/<code>/counter/<path:counter_id>/view")
 @resolve_branch
+@counter_guard
 def api_counter_view(counter_id):
     return jsonify(ql.counter_view(g.branch["id"], counter_id))
 
 
 @app.post("/api/b/<code>/counter/<path:counter_id>/login")
 @resolve_branch
+@counter_guard
 def api_counter_login(counter_id):
-    body = request.get_json(silent=True) or {}
-    staff = (body.get("staff_name") or "").strip()
-    pin_cfg = (db.get_extra(g.branch["id"]).get("counter_pin") or "").strip()
-    if pin_cfg and (body.get("pin") or "").strip() != pin_cfg:
-        return jsonify(error="Sai mã PIN quầy."), 401
-    if pin_cfg:
-        session[f"counter_ok:{g.branch['code']}"] = True
-        session.permanent = True
-    ql.set_counter_status(g.branch["id"], counter_id, "active", staff_name=staff)
+    ql.set_counter_status(g.branch["id"], counter_id, "active", staff_name=_staff())
     push_snapshot(g.branch["id"])
     return jsonify(ql.counter_view(g.branch["id"], counter_id))
 
@@ -370,10 +448,8 @@ def api_counter_login(counter_id):
 @resolve_branch
 @counter_guard
 def api_counter_next(counter_id):
-    body = request.get_json(silent=True) or {}
     try:
-        called = ql.call_next(g.branch["id"], counter_id,
-                              staff_name=(body.get("staff_name") or "").strip())
+        called = ql.call_next(g.branch["id"], counter_id, staff_name=_staff())
     except ql.QueueError as e:
         return jsonify(error=str(e)), 409
     broadcast(g.branch["id"], {"type": "call", **called})
@@ -424,8 +500,7 @@ def api_counter_call_specific(counter_id):
     body = request.get_json(silent=True) or {}
     try:
         called = ql.call_specific(
-            g.branch["id"], counter_id, body.get("full_no", ""),
-            staff_name=(body.get("staff_name") or "").strip(),
+            g.branch["id"], counter_id, body.get("full_no", ""), staff_name=_staff(),
         )
     except ql.QueueError as e:
         return jsonify(error=str(e)), 409
@@ -448,25 +523,38 @@ def api_counter_status(counter_id):
 
 
 # ----------------------------------------------------------------- API admin
-def _hash_pw(pw: str) -> str:
-    return hashlib.sha256(pw.encode("utf-8")).hexdigest()
+@app.get("/api/admin/users")
+@admin_required
+def api_admin_users():
+    return jsonify(users=db.list_users(), branches=db.list_branches())
 
 
-@app.post("/api/admin/login")
-def api_admin_login():
+@app.post("/api/admin/users")
+@admin_required
+def api_admin_users_write():
     body = request.get_json(silent=True) or {}
-    stored = db.get_config("admin_password", "")
-    if stored and _hash_pw(body.get("password", "")) == stored:
-        session["is_admin"] = True
-        session.permanent = True
-        return jsonify(ok=True)
-    return jsonify(error="Sai mật khẩu."), 401
-
-
-@app.post("/api/admin/logout")
-def api_admin_logout():
-    session.pop("is_admin", None)
-    return jsonify(ok=True)
+    action = body.get("action", "")
+    uname = (body.get("username") or "").strip().lower()
+    try:
+        if action == "create":
+            u = db.create_user(uname, body.get("full_name", ""), body.get("password", ""),
+                               role=body.get("role", "staff"),
+                               branch_code=body.get("branch_code"))
+            return jsonify(ok=True, user=u)
+        if action == "update":
+            u = db.update_user(uname,
+                               full_name=body.get("full_name"),
+                               password=body.get("password") or None,
+                               branch_code=body.get("branch_code"),
+                               role=body.get("role"),
+                               active=body.get("active"))
+            return jsonify(ok=True, user=u)
+        if action == "delete":
+            db.delete_user(uname)
+            return jsonify(ok=True)
+    except ValueError as e:
+        return jsonify(error=str(e)), 400
+    return jsonify(error="action không hợp lệ."), 400
 
 
 @app.get("/api/admin/branches")
@@ -535,8 +623,6 @@ def api_admin_set_config():
         merged = db.get_json_config("booking", {}, bid) or {}
         merged.update(body["booking"])
         db.set_json_config("booking", merged, bid)
-    if body.get("new_password"):
-        db.set_config("admin_password", _hash_pw(body["new_password"]))
     push_snapshot(bid)
     return jsonify(ok=True)
 

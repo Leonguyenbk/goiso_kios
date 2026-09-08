@@ -19,25 +19,16 @@
 <div class="min-h-screen">
   <header class="bg-gov text-white px-5 py-3 flex items-center gap-4">
     <div class="font-extrabold">Quản trị hệ thống gọi số — nhiều chi nhánh</div>
-    <a href="/" class="ml-auto text-sm underline opacity-90">Trang chủ</a>
-    <button id="btn-logout" class="btn bg-white/15 hover:bg-white/25 px-3 py-1.5 text-sm hidden">Đăng xuất</button>
+    <span class="ml-auto text-sm opacity-90">Xin chào, <b>{{ me.full_name }}</b></span>
+    <a href="/" class="text-sm underline opacity-90">Trang chủ</a>
+    <button id="btn-logout" class="btn bg-white/15 hover:bg-white/25 px-3 py-1.5 text-sm">Đăng xuất</button>
   </header>
 
-  <!-- Đăng nhập -->
-  <div id="login" class="flex items-center justify-center p-10">
-    <div class="w-full max-w-sm bg-white rounded-2xl border border-slate-200 p-6">
-      <h1 class="text-lg font-bold mb-3">Đăng nhập quản trị</h1>
-      <input id="inp-pw" type="password" class="w-full border border-slate-300 rounded-lg px-3 py-2 mb-3" placeholder="Mật khẩu">
-      <button id="btn-login" class="btn bg-gov hover:bg-gov-700 text-white w-full py-2.5">Đăng nhập</button>
-      <p id="login-err" class="text-red-600 text-sm mt-2 hidden"></p>
-      <p class="text-xs text-slate-400 mt-3">Mật khẩu mặc định: <code>admin123</code> — đổi ngay sau khi vào.</p>
-    </div>
-  </div>
-
   <!-- Bảng điều khiển -->
-  <main id="panel" class="hidden max-w-6xl mx-auto p-5 space-y-5">
+  <main id="panel" class="max-w-6xl mx-auto p-5 space-y-5">
     <nav class="flex gap-2 flex-wrap">
       <button data-tab="branches" class="tab btn bg-gov text-white px-4 py-2">Chi nhánh</button>
+      <button data-tab="users" class="tab btn bg-white border px-4 py-2">Người dùng</button>
       <button data-tab="services" class="tab btn bg-white border px-4 py-2">Dịch vụ</button>
       <button data-tab="counters" class="tab btn bg-white border px-4 py-2">Quầy</button>
       <button data-tab="extra" class="tab btn bg-white border px-4 py-2">Cấu hình chung</button>
@@ -70,6 +61,25 @@
       <p class="text-xs text-slate-400">Mã chi nhánh chỉ gồm chữ thường, số, gạch (vd <code>eakar</code>). Dùng trong đường dẫn <code>/b/&lt;mã&gt;/display</code>.</p>
     </section>
 
+    <!-- TAB: Người dùng -->
+    <section data-panel="users" class="hidden space-y-3">
+      <div class="flex justify-between items-center">
+        <h2 class="font-bold text-lg">Tài khoản nhân viên</h2>
+        <button id="add-user" class="btn bg-white border px-3 py-1.5 text-sm">+ Thêm người dùng</button>
+      </div>
+      <div class="overflow-x-auto"><table class="w-full text-sm border-collapse" id="tbl-user">
+        <thead><tr class="text-left border-b bg-slate-50">
+          <th class="p-2">Tên đăng nhập</th><th class="p-2">Họ và tên</th>
+          <th class="p-2">Vai trò</th><th class="p-2">Chi nhánh</th>
+          <th class="p-2">Mật khẩu mới</th><th class="p-2">Bật</th><th></th>
+        </tr></thead><tbody></tbody>
+      </table></div>
+      <p class="text-xs text-slate-400">
+        <b>staff</b> = nhân viên nhận hồ sơ, chỉ vào được quầy gọi số của chi nhánh mình.
+        <b>admin</b> = xem/sửa toàn hệ thống. Để đổi mật khẩu: gõ vào ô "Mật khẩu mới" rồi bấm Lưu.
+      </p>
+    </section>
+
     <!-- TAB: Dịch vụ -->
     <section data-panel="services" class="hidden space-y-3">
       <div class="flex justify-between items-center"><h2 class="font-bold text-lg">Dịch vụ</h2>
@@ -100,8 +110,7 @@
       <div class="grid sm:grid-cols-2 gap-3" id="extra-fields"></div>
       <label class="block text-sm font-semibold mt-3">Khung giờ lấy số (JSON)</label>
       <textarea id="extra-slots" class="w-full border rounded-lg p-2 font-mono text-xs h-24"></textarea>
-      <label class="block text-sm font-semibold mt-3">Đổi mật khẩu quản trị TỔNG (để trống nếu không đổi)</label>
-      <input id="new-pw" type="password" class="border rounded-lg px-3 py-2 w-full sm:w-80" placeholder="Mật khẩu mới">
+      <p class="text-xs text-slate-400 mt-2">Đổi mật khẩu đăng nhập ở tab <b>Người dùng</b>.</p>
     </section>
 
     <!-- TAB: Đặt lịch online -->
@@ -141,7 +150,7 @@
     </div>
   </main>
 </div>
-<script type="module" src="{{ url_for('static', filename='js/admin.js') }}?v=5"></script>
+<script type="module" src="{{ url_for('static', filename='js/admin.js') }}?v=6"></script>
   {% include '_credit.html' %}
 </body>
 </html>

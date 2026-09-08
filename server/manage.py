@@ -10,6 +10,9 @@
   python manage.py reset-today [<code>|all]          # xoá số đã cấp hôm nay
   python manage.py show-config <code>                # in cấu hình 1 chi nhánh
   python manage.py standardize [<code>|all]          # ghi lại DỊCH VỤ + QUẦY mặc định
+  python manage.py add-user <user> "<Họ tên>" <mật khẩu> <mã chi nhánh|admin>
+  python manage.py list-users
+  python manage.py set-user-pw <user> <mật khẩu mới>
 """
 import csv
 import hashlib
@@ -143,6 +146,34 @@ def main(argv):
             print(f"  {code}: đã ghi lại {len(db.DEFAULT_SERVICES)} dịch vụ + "
                   f"{len(db.DEFAULT_COUNTERS)} quầy mặc định")
         print("Xong. (Không đụng tới cấu hình chung / đặt lịch / số đã cấp.)")
+
+    elif cmd == "add-user":
+        if len(argv) < 5:
+            print('VD: python manage.py add-user hoanv "Nguyễn Văn Hoàn" MatKhau123 eakar')
+            print('    python manage.py add-user sep "Phó phòng" MatKhau123 admin')
+            return
+        role = "admin" if argv[4].lower() == "admin" else "staff"
+        bc = None if role == "admin" else argv[4]
+        try:
+            u = db.create_user(argv[1], argv[2], argv[3], role=role, branch_code=bc)
+        except ValueError as e:
+            print("Lỗi:", e)
+            return
+        print(f"Đã tạo: {u['username']} ({u['role']}) - {u['full_name']}"
+              + (f" - chi nhánh {u['branch_code']}" if u['branch_code'] else ""))
+
+    elif cmd == "list-users":
+        for u in db.list_users():
+            flag = "ON " if u["active"] else "off"
+            br = u["branch_code"] or "-"
+            print(f"  [{flag}] {u['username']:<16} {u['role']:<6} {br:<10} {u['full_name']}")
+
+    elif cmd == "set-user-pw":
+        if len(argv) < 3:
+            print("VD: python manage.py set-user-pw hoanv MatKhauMoi")
+            return
+        db.update_user(argv[1], password=argv[2])
+        print("Đã đổi mật khẩu cho", argv[1])
 
     elif cmd == "show-config":
         if len(argv) < 2:

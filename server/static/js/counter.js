@@ -1,8 +1,9 @@
-import { bpath, api, fmtTime, elapsed } from './common.js?v=5';
+import { bpath, api, fmtTime, elapsed } from './common.js?v=6';
 
 const $ = (s) => document.querySelector(s);
 const LS = 'goiso.counter.' + ((window.__BRANCH__) || '');
-let state = { counter_id: null, staff_name: '' };
+const ME = window.__ME__ || '';
+let state = { counter_id: null };
 let view = null;
 let timer = null;
 let poll = null;
@@ -16,15 +17,12 @@ try {
   if (saved && saved.counter_id) { state = saved; enterConsole(); }
 } catch (_) {}
 
-/* -------------------------------------------------- đăng nhập */
+/* -------------------------------------------------- vào ca (đã đăng nhập từ /login) */
 $('#btn-login').addEventListener('click', async () => {
   const cid = $('#sel-counter').value;
-  const staff = $('#inp-staff').value.trim();
-  const pin = $('#inp-pin') ? $('#inp-pin').value.trim() : '';
-  if (!staff) { showSetupErr('Nhập tên cán bộ.'); return; }
   try {
-    await api(bpath(`/counter/${encodeURIComponent(cid)}/login`), { method: 'POST', body: { staff_name: staff, pin } });
-    state = { counter_id: cid, staff_name: staff };
+    await api(bpath(`/counter/${encodeURIComponent(cid)}/login`), { method: 'POST', body: {} });
+    state = { counter_id: cid };
     localStorage.setItem(LS, JSON.stringify(state));
     enterConsole();
   } catch (e) { showSetupErr(e.message); }
@@ -54,7 +52,7 @@ function enterConsole() {
   $('#console').classList.remove('hidden');
   $('#console').classList.add('grid');
   $('#lbl-counter').textContent = state.counter_id.replace(/\D/g, '') || state.counter_id;
-  $('#lbl-staff').textContent = state.staff_name;
+  $('#lbl-staff').textContent = ME;
   if ($('#sel-counter')) $('#sel-counter').value = state.counter_id;
   refresh();
   clearInterval(poll);
@@ -64,7 +62,7 @@ function enterConsole() {
 /* -------------------------------------------------- hành động */
 const post = (action, body) =>
   api(bpath(`/counter/${encodeURIComponent(state.counter_id)}/${action}`),
-      { method: 'POST', body: { staff_name: state.staff_name, ...body } });
+      { method: 'POST', body: body || {} });
 
 $('#btn-next').addEventListener('click', () => act(() => post('next')));
 $('#btn-recall').addEventListener('click', () => act(() => post('recall')));

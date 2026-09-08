@@ -1,8 +1,8 @@
 {% set _cr = (extra.footer_credit if (extra is defined and extra and extra.footer_credit)
               else 'Phòng Dữ liệu - Thông tin đất đai\nTổ Ứng dụng và Phát triển công nghệ') %}
 <div style="position:fixed;left:0;right:0;bottom:0;z-index:60;pointer-events:none;
-            text-align:center;font-size:10px;line-height:1.35;padding:2px 8px;
-            color:#475569;background:rgba(248,250,252,.82);
+            text-align:center;font-size:15px;font-weight:600;line-height:1.4;padding:6px 10px;
+            color:#0b5fa5;background:rgba(255,255,255,.92);border-top:1px solid #dbe4ee;
             font-family:'Be Vietnam Pro',system-ui,sans-serif;">
   {% for line in _cr.split('\n') %}{{ line }}{% if not loop.last %}<br>{% endif %}{% endfor %}
 </div>

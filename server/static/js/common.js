@@ -35,6 +35,10 @@ export async function api(path, opts = {}) {
     ...opts,
     body: opts.body ? JSON.stringify(opts.body) : undefined,
   });
+  if (res.status === 401 || res.status === 403) {
+    location.href = '/login?next=' + encodeURIComponent(location.pathname);
+    throw new Error('Cần đăng nhập');
+  }
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || ('Lỗi ' + res.status));
   return data;
