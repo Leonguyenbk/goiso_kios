@@ -1,4 +1,4 @@
-import { bpath, api, fmtTime, elapsed } from './common.js?v=4';
+import { bpath, api, fmtTime, elapsed } from './common.js?v=5';
 
 const $ = (s) => document.querySelector(s);
 const LS = 'goiso.counter.' + ((window.__BRANCH__) || '');

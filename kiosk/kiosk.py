@@ -48,7 +48,12 @@ class KioskApp(ctk.CTk):
 
         self._build_header()
         self.body = ctk.CTkFrame(self, fg_color="transparent")
-        self.body.pack(fill="both", expand=True, padx=28, pady=(0, 20))
+        self.body.pack(fill="both", expand=True, padx=28, pady=(0, 6))
+
+        self.lbl_credit = ctk.CTkLabel(
+            self, text="Phòng Dữ liệu - Thông tin đất đai\nTổ Ứng dụng và Phát triển công nghệ",
+            font=(FONT, 15), text_color="#94a3b8", justify="center")
+        self.lbl_credit.pack(side="bottom", pady=(0, 8))
 
         self.overlay = None
         self._tick_clock()
@@ -98,6 +103,8 @@ class KioskApp(ctk.CTk):
         self.time_open = data.get("time_open", True)
         self.lbl_org.configure(text=self.extra.get("ten_co_quan", ""))
         self.lbl_branch.configure(text=self.extra.get("ten_chi_nhanh", ""))
+        if self.extra.get("footer_credit"):
+            self.lbl_credit.configure(text=self.extra["footer_credit"])
         if self.overlay and getattr(self, "_overlay_kind", "") in ("offline", "lock"):
             self._clear_overlay()
         if not self.time_open:

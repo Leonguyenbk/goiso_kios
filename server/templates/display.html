@@ -51,7 +51,7 @@
   </div>
 
   <!-- Chân trang: đang chờ + tổng lượt -->
-  <footer class="shrink-0 bg-gov-700 text-white px-6 py-3 flex items-center gap-6 flex-wrap">
+  <footer class="shrink-0 bg-gov-700 text-white px-6 py-3 flex items-center gap-6 flex-wrap" style="padding-bottom:2.1rem">
     <span class="font-semibold uppercase text-sm tracking-wider opacity-80">Đang chờ</span>
     <div id="waiting" class="flex gap-4 flex-wrap text-lg font-semibold"></div>
     <div class="ml-auto text-lg">Tổng lượt hôm nay: <b id="total" class="tnum font-mono text-2xl">0</b></div>
@@ -73,5 +73,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script type="module" src="{{ url_for('static', filename='js/display.js') }}?v=4"></script>
+<script type="module" src="{{ url_for('static', filename='js/display.js') }}?v=5"></script>
 {% endblock %}

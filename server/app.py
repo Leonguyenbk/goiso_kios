@@ -337,6 +337,7 @@ def api_config_public():
             "spotlight_seconds": extra.get("spotlight_seconds", 20),
             "tts_mode": extra.get("tts_mode", "server"),
             "tts_voice": extra.get("tts_voice", "vi-VN-HoaiMyNeural"),
+            "footer_credit": extra.get("footer_credit", ""),
         },
         "time_open": ql.within_time_lock(branch_id),
     })

@@ -22,6 +22,7 @@ const EXTRA_TEXT = {
   lock_message: 'Thông báo ngoài giờ', voice_template: 'Mẫu câu đọc ({so}, {quay})',
   tts_mode: 'Chế độ đọc số: server (máy chủ) / browser (trình duyệt)',
   tts_voice: 'Giọng máy chủ: vi-VN-HoaiMyNeural (nữ) / vi-VN-NamMinhNeural (nam)',
+  footer_credit: 'Dòng ghi công ở chân màn hình (2 dòng, gõ \\n để xuống dòng)',
 };
 const EXTRA_BOOL = {
   lock_time_enabled: 'Khoá theo giờ', qr_enabled: 'In mã QR',

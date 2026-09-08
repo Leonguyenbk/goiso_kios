@@ -131,16 +131,19 @@ def init_db():
 # --------------------------------------------------------------- mẫu cấu hình
 DEFAULT_COUNTERS = {
     "Quầy số 01": {"active": True, "staff": "", "prefix": "A", "display_order": 1},
-    "Quầy số 02": {"active": True, "staff": "", "prefix": "B", "display_order": 2},
-    "Quầy số 03": {"active": True, "staff": "", "prefix": "A,B", "display_order": 3},
-    "Quầy số 04": {"active": True, "staff": "", "prefix": "A,B", "display_order": 4},
+    "Quầy số 02": {"active": True, "staff": "", "prefix": "A", "display_order": 2},
+    "Quầy số 03": {"active": True, "staff": "", "prefix": "B", "display_order": 3},
+    "Quầy số 04": {"active": True, "staff": "", "prefix": "C", "display_order": 4},
+    "Quầy số 05": {"active": True, "staff": "", "prefix": "A,B,C", "display_order": 5},
 }
 
 DEFAULT_SERVICES = {
-    "A": {"name": "TRẢ KẾT QUẢ GIẢI QUYẾT THỦ TỤC HÀNH CHÍNH", "short": "Trả kết quả",
-          "color": "#27ae60", "daily_limit": 200, "active": True},
-    "B": {"name": "ĐĂNG KÝ BIẾN ĐỘNG ĐẤT ĐAI", "short": "Biến động đất đai",
-          "color": "#3498db", "daily_limit": 150, "active": True},
+    "A": {"name": "ĐĂNG KÝ ĐẤT ĐAI", "short": "Đăng ký đất đai",
+          "color": "#3498db", "daily_limit": 200, "active": True},
+    "B": {"name": "GIAO DỊCH BẢO ĐẢM", "short": "Giao dịch bảo đảm",
+          "color": "#e67e22", "daily_limit": 200, "active": True},
+    "C": {"name": "TRẢ KẾT QUẢ", "short": "Trả kết quả",
+          "color": "#27ae60", "daily_limit": 300, "active": True},
 }
 
 DEFAULT_EXTRA = {
@@ -167,6 +170,8 @@ DEFAULT_EXTRA = {
     "tts_voice": "vi-VN-HoaiMyNeural",  # hoặc vi-VN-NamMinhNeural (giọng nam)
     "spotlight_seconds": 20,
     "recent_count": 8,
+    # Dòng ghi công ở chân mọi giao diện (2 dòng, ngăn bằng \n).
+    "footer_credit": "Phòng Dữ liệu - Thông tin đất đai\nTổ Ứng dụng và Phát triển công nghệ",
 }
 
 DEFAULT_BOOKING = {

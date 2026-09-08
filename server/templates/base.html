@@ -34,6 +34,7 @@
     window.__BRANCH_NAME__ = {{ branch.full_name|tojson }};
   </script>{% endif %}
   {% block body %}{% endblock %}
+  {% include '_credit.html' %}
   {% block scripts %}{% endblock %}
 </body>
 </html>

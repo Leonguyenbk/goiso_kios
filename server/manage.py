@@ -9,6 +9,7 @@
   python manage.py regen-display-token <code>
   python manage.py reset-today [<code>|all]          # xoá số đã cấp hôm nay
   python manage.py show-config <code>                # in cấu hình 1 chi nhánh
+  python manage.py standardize [<code>|all]          # ghi lại DỊCH VỤ + QUẦY mặc định
 """
 import csv
 import hashlib
@@ -128,6 +129,20 @@ def main(argv):
                 total += n
                 print(f"  {code}: xoá {n} số")
         print(f"Đã xoá tổng {total} số của ngày {day}.")
+
+    elif cmd == "standardize":
+        target = argv[1] if len(argv) > 1 else "all"
+        codes = ([b["code"] for b in db.list_branches()] if target == "all" else [target])
+        for code in codes:
+            b = db.get_branch(code)
+            if not b:
+                print("  ? bỏ qua", code)
+                continue
+            db.set_json_config("services", json.loads(json.dumps(db.DEFAULT_SERVICES)), b["id"])
+            db.set_json_config("counters", json.loads(json.dumps(db.DEFAULT_COUNTERS)), b["id"])
+            print(f"  {code}: đã ghi lại {len(db.DEFAULT_SERVICES)} dịch vụ + "
+                  f"{len(db.DEFAULT_COUNTERS)} quầy mặc định")
+        print("Xong. (Không đụng tới cấu hình chung / đặt lịch / số đã cấp.)")
 
     elif cmd == "show-config":
         if len(argv) < 2:

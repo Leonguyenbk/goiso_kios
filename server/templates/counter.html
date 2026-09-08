@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Bàn gọi số — {{ extra.ten_chi_nhanh }}{% endblock %}
 {% block body %}
-<div class="min-h-screen flex flex-col">
+<div class="min-h-screen flex flex-col" style="padding-bottom:2rem">
   <header class="bg-gov text-white px-5 py-3 flex items-center gap-4">
     <div class="font-extrabold text-lg">{{ extra.ten_chi_nhanh }}</div>
     <div class="ml-auto flex items-center gap-3 text-sm">
@@ -92,5 +92,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script type="module" src="{{ url_for('static', filename='js/counter.js') }}?v=4"></script>
+<script type="module" src="{{ url_for('static', filename='js/counter.js') }}?v=5"></script>
 {% endblock %}
