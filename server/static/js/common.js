@@ -144,22 +144,32 @@ export function speak(text, { rate = 0.95, repeat = 2, gap = 700 } = {}) {
 }
 
 /* Đọc số: ưu tiên giọng do MÁY CHỦ tạo (mode 'server'); lỗi thì quay về giọng
-   trình duyệt. Máy nối TV không cần cài giọng đọc tiếng Việt. */
+   trình duyệt. Máy nối TV không cần cài giọng đọc tiếng Việt.
+   Trả về URL mp3 đang dùng (để trang có thể tự kiểm tra). */
 let ttsAudio = null;
+export function ttsUrl(text, voice = '') {
+  return bpath('/tts?text=' + encodeURIComponent(text) + (voice ? '&voice=' + encodeURIComponent(voice) : ''));
+}
 export function speakVi(text, { rate = 1, repeat = 2, gap = 600, mode = 'server', voice = '' } = {}) {
   if (mode !== 'server') { speak(text, { rate: rate * 0.95, repeat, gap: gap + 100 }); return; }
-  try { if (ttsAudio) { ttsAudio.pause(); ttsAudio = null; } } catch (_) {}
-  const url = bpath('/tts?text=' + encodeURIComponent(text) + (voice ? '&voice=' + encodeURIComponent(voice) : ''));
-  let i = 0;
-  const play = () => {
+  try { if (ttsAudio) ttsAudio.pause(); } catch (_) {}
+  const url = ttsUrl(text, voice);
+  let i = 0, fellBack = false;
+  const fallback = () => {
+    if (fellBack || i > 0) return;
+    fellBack = true;
+    speak(text, { rate: rate * 0.95, repeat, gap: gap + 100 });
+  };
+  const playOnce = () => {
     const a = new Audio(url);
     ttsAudio = a;
     a.playbackRate = Math.min(1.5, Math.max(0.6, rate));
-    a.onended = () => { i += 1; if (i < repeat) setTimeout(play, gap); };
-    a.onerror = () => { if (i === 0) speak(text, { rate: rate * 0.95, repeat, gap: gap + 100 }); };
-    a.play().catch(() => { if (i === 0) speak(text, { rate: rate * 0.95, repeat, gap: gap + 100 }); });
+    a.addEventListener('ended', () => { i += 1; if (i < repeat) setTimeout(playOnce, gap); });
+    a.addEventListener('error', fallback);
+    const p = a.play();
+    if (p && p.catch) p.catch(fallback);
   };
-  play();
+  playOnce();
 }
 
 // Ghép câu đọc từ mẫu {so} / {quay}

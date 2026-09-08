@@ -1,4 +1,4 @@
-import { connectStream, bpath, chime, speak, speakVi, buildCallSentence, docSo, fmtTime, viVoiceName } from './common.js';
+import { connectStream, bpath, chime, speak, speakVi, ttsUrl, buildCallSentence, docSo, fmtTime, viVoiceName } from './common.js';
 
 const $ = (s) => document.querySelector(s);
 const WEEKDAYS = ['Chủ nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
@@ -42,6 +42,26 @@ function checkVoice() {
 }
 $('#gate').addEventListener('click', openGate);
 window.addEventListener('keydown', () => { if ($('#gate')) openGate(); }, { once: true });
+
+/* -------------------------------------------------- nút "Thử tiếng" (chẩn đoán) */
+const tbtn = $('#btn-test');
+if (tbtn) tbtn.addEventListener('click', () => {
+  audioReady = true;
+  const msg = $('#test-msg');
+  msg.textContent = 'Đang tải âm thanh…'; msg.style.color = '';
+  chime();
+  const mode = cfg.tts_mode || 'server';
+  if (mode !== 'server') {
+    msg.textContent = 'Chế độ giọng trình duyệt (' + (viVoiceName() || 'không có giọng Việt') + ')';
+    speak('Kiểm tra âm thanh, một hai ba', { rate: 0.95, repeat: 1 });
+    return;
+  }
+  const a = new Audio(ttsUrl('Kiểm tra âm thanh. Xin mời số thứ tự A một, đến quầy số một.', cfg.tts_voice || ''));
+  a.addEventListener('playing', () => { msg.textContent = '✓ Máy chủ đọc OK'; msg.style.color = '#bbf7d0'; });
+  a.addEventListener('error', () => { msg.textContent = '✗ Lỗi tải âm thanh máy chủ (mã ' + (a.error ? a.error.code : '?') + ')'; msg.style.color = '#fecaca'; });
+  a.play().then(() => { msg.textContent = '✓ Đang phát giọng máy chủ'; msg.style.color = '#bbf7d0'; })
+          .catch(e => { msg.textContent = '✗ Trình duyệt chặn phát: ' + e.name; msg.style.color = '#fecaca'; });
+});
 
 /* -------------------------------------------------- render snapshot */
 function statusBadge(s) {
