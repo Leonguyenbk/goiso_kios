@@ -30,6 +30,8 @@ app.config.update(
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE="Lax",
     SESSION_COOKIE_SECURE=not bool(os.environ.get("GOISO_DEBUG")),
+    # Không để trình duyệt/Cloudflare giữ bản JS/CSS cũ — luôn kiểm tra lại (ETag -> 304).
+    SEND_FILE_MAX_AGE_DEFAULT=0,
 )
 
 DEBUG = bool(os.environ.get("GOISO_DEBUG"))
