@@ -19,6 +19,10 @@ server/.env
 # CSDL đa chi nhánh (dữ liệu chạy thật — sao lưu riêng, không đưa vào git)
 hethong_v2.db
 
+# File dự án của trình xem CSDL (SQLiteStudio/DB Browser)
+*.sqbpro
+*.sqlitestudio
+
 # Tệp phát sinh khi chạy
 kiosk/ticket_demo.png
 kiosk/*.preview.png
