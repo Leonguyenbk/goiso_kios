@@ -47,13 +47,15 @@ class KioskApp(ctk.CTk):
         self.bind("<Escape>", lambda e: None)
 
         self._build_header()
-        self.body = ctk.CTkFrame(self, fg_color="transparent")
-        self.body.pack(fill="both", expand=True, padx=28, pady=(0, 6))
 
+        # Dòng ghi công — pack TRƯỚC body (side=bottom) để không bị body expand đè.
         self.lbl_credit = ctk.CTkLabel(
             self, text="Phòng Dữ liệu - Thông tin đất đai\nTổ Ứng dụng và Phát triển công nghệ",
-            font=(FONT, 15), text_color="#94a3b8", justify="center")
-        self.lbl_credit.pack(side="bottom", pady=(0, 8))
+            font=(FONT, 16), text_color="#94a3b8", justify="center")
+        self.lbl_credit.pack(side="bottom", pady=(4, 10))
+
+        self.body = ctk.CTkFrame(self, fg_color="transparent")
+        self.body.pack(fill="both", expand=True, padx=28, pady=(0, 6))
 
         self.overlay = None
         self._tick_clock()
