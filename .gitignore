@@ -35,3 +35,6 @@ _ref_hallmark/
 Thumbs.db
 .idea/
 .vscode/
+
+# Bộ nhớ đệm giọng đọc do máy chủ tạo
+server/tts_cache/

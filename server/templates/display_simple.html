@@ -24,9 +24,9 @@
 {% endblock %}
 {% block scripts %}
 <script type="module">
-import { connectStream, chime, speak, buildCallSentence, docSo, viVoiceName } from "{{ url_for('static', filename='js/common.js') }}";
+import { connectStream, chime, speak, speakVi, buildCallSentence, docSo, viVoiceName } from "{{ url_for('static', filename='js/common.js') }}";
 const $ = (s) => document.querySelector(s);
-let cfg = { voice_rate: 0.95, voice_repeat: 2, voice_template: 'Mời số {so}, đến quầy số {quay}' };
+let cfg = { voice_rate: 0.95, voice_repeat: 2, voice_template: 'Xin mời số thứ tự {so}, đến quầy số {quay}' };
 let audioReady = false;
 setInterval(() => $('#clock').textContent = new Date().toLocaleTimeString('vi-VN', { hour12: false }), 1000);
 function gate() {
@@ -34,7 +34,8 @@ function gate() {
   if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(() => {});
   $('#gate').remove();
   fetch('/api/b/' + window.__BRANCH__ + '/config/public').then(r => r.json()).then(d => cfg = { ...cfg, ...d.extra }).catch(() => {});
-  const chk = () => $('#novoice').classList.toggle('hidden', !!viVoiceName());
+  const chk = () => $('#novoice').classList.toggle('hidden',
+    (cfg.tts_mode || 'server') !== 'browser' || !!viVoiceName());
   chk(); setInterval(chk, 4000);
 }
 $('#gate').addEventListener('click', gate);
@@ -47,8 +48,8 @@ connectStream((ev) => {
     $('#svc').textContent = ev.service_name || '';
     if (audioReady) {
       chime();
-      setTimeout(() => speak(buildCallSentence(cfg.voice_template, ev.full_no, ev.counter_no),
-        { rate: cfg.voice_rate, repeat: cfg.voice_repeat }), 650);
+      setTimeout(() => speakVi(buildCallSentence(cfg.voice_template, ev.full_no, ev.counter_no),
+        { rate: cfg.voice_rate, repeat: cfg.voice_repeat, mode: cfg.tts_mode || 'server', voice: cfg.tts_voice || '' }), 650);
     }
   } else if (ev.type === '_disconnected') {
     $('#conn').classList.remove('hidden');

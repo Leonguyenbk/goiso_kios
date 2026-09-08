@@ -1,9 +1,9 @@
-import { connectStream, bpath, chime, speak, buildCallSentence, docSo, fmtTime, viVoiceName } from './common.js';
+import { connectStream, bpath, chime, speak, speakVi, buildCallSentence, docSo, fmtTime, viVoiceName } from './common.js';
 
 const $ = (s) => document.querySelector(s);
 const WEEKDAYS = ['Chủ nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
 
-let cfg = { voice_rate: 0.95, voice_repeat: 2, voice_template: 'Mời số {so}, đến quầy số {quay}', spotlight_seconds: 20 };
+let cfg = { voice_rate: 0.95, voice_repeat: 2, voice_template: 'Xin mời số thứ tự {so}, đến quầy số {quay}', spotlight_seconds: 20 };
 let audioReady = false;
 let spotlightTimer = null;
 let lastCallId = null;
@@ -34,9 +34,11 @@ function openGate() {
 }
 
 function checkVoice() {
-  const has = !!viVoiceName();
   const el = $('#novoice');
-  if (el) el.classList.toggle('hidden', has);
+  if (!el) return;
+  // Chế độ 'server': máy chủ tự đọc, không cần giọng trình duyệt -> không cảnh báo.
+  const needBrowserVoice = (cfg.tts_mode || 'server') === 'browser';
+  el.classList.toggle('hidden', !needBrowserVoice || !!viVoiceName());
 }
 $('#gate').addEventListener('click', openGate);
 window.addEventListener('keydown', () => { if ($('#gate')) openGate(); }, { once: true });
@@ -118,7 +120,10 @@ function announce(ev) {
   if (!audioReady) return;
   chime();
   const text = buildCallSentence(cfg.voice_template, ev.full_no, ev.counter_no);
-  setTimeout(() => speak(text, { rate: cfg.voice_rate, repeat: cfg.voice_repeat }), 650);
+  setTimeout(() => speakVi(text, {
+    rate: cfg.voice_rate, repeat: cfg.voice_repeat,
+    mode: cfg.tts_mode || 'server', voice: cfg.tts_voice || '',
+  }), 650);
 }
 
 /* -------------------------------------------------- luồng SSE */

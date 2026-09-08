@@ -123,7 +123,13 @@ Phím tắt: `F11` toàn màn hình · `Ctrl+Shift+Q` thoát.
 ## 5. Màn hình hiển thị — `/b/<mã>/display`
 
 Mở toàn màn hình trên TV. Lần đầu **chạm/nhấn phím** để bật âm thanh + toàn màn hình.
-Cần cài **giọng tiếng Việt của Windows** để đọc số.
+
+**Giọng đọc số:** mặc định `tts_mode = "server"` — **máy chủ tạo giọng tiếng Việt**
+(thư viện `edge-tts`, giọng `vi-VN-HoaiMyNeural` / `vi-VN-NamMinhNeural`) rồi gửi âm
+thanh cho TV phát, nên **không cần cài giọng đọc trên từng máy nối TV**. Máy chủ cần
+có mạng ra Internet; câu đọc được lưu đệm ở `server/tts_cache/`.
+Đổi giọng nam/nữ hoặc chuyển về giọng trình duyệt (`tts_mode = "browser"`) trong
+`/admin` → tab **Cấu hình chung** (`tts_voice`, `tts_mode`).
 
 Biến thể: `?nocursor=1` · `?counters=1,3,5` · `/b/<mã>/display/simple` (một số cực lớn).
 

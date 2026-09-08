@@ -160,7 +160,11 @@ DEFAULT_EXTRA = {
     "allow_sunday": False,
     "voice_rate": 0.95,
     "voice_repeat": 2,
-    "voice_template": "Mời số {so}, đến quầy số {quay}",
+    "voice_template": "Xin mời số thứ tự {so}, đến quầy số {quay}",
+    # Đọc số: "server" = máy chủ tạo giọng tiếng Việt (không cần cài gì trên TV);
+    # "browser" = dùng giọng của trình duyệt/Windows.
+    "tts_mode": "server",
+    "tts_voice": "vi-VN-HoaiMyNeural",  # hoặc vi-VN-NamMinhNeural (giọng nam)
     "spotlight_seconds": 20,
     "recent_count": 8,
 }

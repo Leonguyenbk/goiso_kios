@@ -22,6 +22,7 @@ from flask import (Flask, Response, g, jsonify, redirect, render_template,
 import db
 import queue_logic as ql
 import booking_logic as bk
+import tts as tts_engine
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("GOISO_SECRET", "goiso-dev-secret-change-me")
@@ -234,6 +235,26 @@ def api_state():
     return jsonify(ql.snapshot(g.branch["id"]))
 
 
+@app.get("/api/b/<code>/tts")
+@resolve_branch
+def api_tts():
+    """Đọc số bằng giọng tiếng Việt phía máy chủ -> trả file mp3."""
+    text = request.args.get("text", "")
+    voice = request.args.get("voice", "") or db.get_extra(g.branch["id"]).get("tts_voice", "")
+    if not tts_engine.available():
+        return jsonify(error="Máy chủ chưa cài edge-tts."), 503
+    try:
+        path = tts_engine.get_or_make(text, voice)
+    except ValueError as e:
+        return jsonify(error=str(e)), 400
+    except Exception:  # noqa: BLE001
+        return jsonify(error="Không tạo được âm thanh."), 502
+    from flask import send_file
+    resp = send_file(path, mimetype="audio/mpeg", conditional=True)
+    resp.headers["Cache-Control"] = "public, max-age=86400"
+    return resp
+
+
 @app.post("/api/b/<code>/checkin")
 @resolve_branch
 @require_branch_key
@@ -293,8 +314,10 @@ def api_config_public():
             "time_slots": extra.get("time_slots", []),
             "voice_rate": extra.get("voice_rate", 0.95),
             "voice_repeat": extra.get("voice_repeat", 2),
-            "voice_template": extra.get("voice_template", "Mời số {so}, đến quầy số {quay}"),
+            "voice_template": extra.get("voice_template", "Xin mời số thứ tự {so}, đến quầy số {quay}"),
             "spotlight_seconds": extra.get("spotlight_seconds", 20),
+            "tts_mode": extra.get("tts_mode", "server"),
+            "tts_voice": extra.get("tts_voice", "vi-VN-HoaiMyNeural"),
         },
         "time_open": ql.within_time_lock(branch_id),
     })

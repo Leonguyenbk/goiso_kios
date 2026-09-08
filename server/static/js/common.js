@@ -70,16 +70,15 @@ export function docSo(n) {
   return s + ' ' + docSo(rest);
 }
 
-// "A-025" -> "A, không hai lăm" (đọc từng chữ số cho rõ)
+// "A-025" -> "A không hai mươi lăm"  (chữ cái + hàng trăm đọc rời + 2 số cuối đọc gộp)
 export function docSoThuTu(fullNo) {
   const m = String(fullNo).toUpperCase().match(/^([A-Z]+)[-\s]?0*(\d+)$/);
   if (!m) return String(fullNo);
   const letter = m[1].split('').join(' ');
-  const digits = m[2].padStart(2, '0').split('').map((d, i, arr) => {
-    if (i === arr.length - 1 && d === '5') return 'lăm';
-    return ONES[+d];
-  }).join(' ');
-  return letter + ', ' + digits;
+  const s = String(parseInt(m[2], 10)).padStart(3, '0');   // "025"
+  const head = ONES[+s[0]];                                  // "không"
+  const tail = docSo(parseInt(s.slice(1), 10) || 0);         // docSo(25) -> "hai mươi lăm"
+  return `${letter} ${head} ${tail}`;
 }
 
 /* ------------------------------------------------------- chuông + giọng nói */
@@ -144,9 +143,28 @@ export function speak(text, { rate = 0.95, repeat = 2, gap = 700 } = {}) {
   sayOnce();
 }
 
+/* Đọc số: ưu tiên giọng do MÁY CHỦ tạo (mode 'server'); lỗi thì quay về giọng
+   trình duyệt. Máy nối TV không cần cài giọng đọc tiếng Việt. */
+let ttsAudio = null;
+export function speakVi(text, { rate = 1, repeat = 2, gap = 600, mode = 'server', voice = '' } = {}) {
+  if (mode !== 'server') { speak(text, { rate: rate * 0.95, repeat, gap: gap + 100 }); return; }
+  try { if (ttsAudio) { ttsAudio.pause(); ttsAudio = null; } } catch (_) {}
+  const url = bpath('/tts?text=' + encodeURIComponent(text) + (voice ? '&voice=' + encodeURIComponent(voice) : ''));
+  let i = 0;
+  const play = () => {
+    const a = new Audio(url);
+    ttsAudio = a;
+    a.playbackRate = Math.min(1.5, Math.max(0.6, rate));
+    a.onended = () => { i += 1; if (i < repeat) setTimeout(play, gap); };
+    a.onerror = () => { if (i === 0) speak(text, { rate: rate * 0.95, repeat, gap: gap + 100 }); };
+    a.play().catch(() => { if (i === 0) speak(text, { rate: rate * 0.95, repeat, gap: gap + 100 }); });
+  };
+  play();
+}
+
 // Ghép câu đọc từ mẫu {so} / {quay}
 export function buildCallSentence(template, fullNo, counterNo) {
-  return (template || 'Mời số {so}, đến quầy số {quay}')
+  return (template || 'Xin mời số thứ tự {so}, đến quầy số {quay}')
     .replace('{so}', docSoThuTu(fullNo))
     .replace('{quay}', docSo(counterNo));
 }
