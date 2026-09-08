@@ -24,7 +24,7 @@
 {% endblock %}
 {% block scripts %}
 <script type="module">
-import { connectStream, chime, speak, speakVi, buildCallSentence, docSo, viVoiceName } from "{{ url_for('static', filename='js/common.js') }}";
+import { connectStream, chime, speak, speakVi, buildCallSentence, docSo, viVoiceName } from "{{ url_for('static', filename='js/common.js') }}?v=3";
 const $ = (s) => document.querySelector(s);
 let cfg = { voice_rate: 0.95, voice_repeat: 2, voice_template: 'Xin mời số thứ tự {so}, đến quầy số {quay}' };
 let audioReady = false;

@@ -1,4 +1,4 @@
-import { connectStream, bpath, chime, speak, speakVi, ttsUrl, buildCallSentence, docSo, fmtTime, viVoiceName } from './common.js';
+import { connectStream, bpath, chime, speak, speakVi, ttsUrl, buildCallSentence, docSo, fmtTime, viVoiceName } from './common.js?v=3';
 
 const $ = (s) => document.querySelector(s);
 const WEEKDAYS = ['Chủ nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
