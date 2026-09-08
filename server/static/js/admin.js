@@ -20,6 +20,8 @@ const EXTRA_TEXT = {
   ten_co_quan: 'Tên cơ quan', link_qr: 'Link QR trên phiếu',
   counter_pin: 'Mã PIN quầy (để trống = không yêu cầu)',
   lock_message: 'Thông báo ngoài giờ', voice_template: 'Mẫu câu đọc ({so}, {quay})',
+  tts_mode: 'Chế độ đọc số: server (máy chủ) / browser (trình duyệt)',
+  tts_voice: 'Giọng máy chủ: vi-VN-HoaiMyNeural (nữ) / vi-VN-NamMinhNeural (nam)',
 };
 const EXTRA_BOOL = {
   lock_time_enabled: 'Khoá theo giờ', qr_enabled: 'In mã QR',
