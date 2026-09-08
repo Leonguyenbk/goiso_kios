@@ -7,7 +7,7 @@ của nhau.
 
 | Thành phần | Vị trí | Mở tại |
 |---|---|---|
-| **Máy chủ** | `server/` | `http://<máy-chủ>:5000` (thật: sau Cloudflare Tunnel) |
+| **Máy chủ** | `server/` | `http://<máy-chủ>:5050` (thật: sau Cloudflare Tunnel) |
 | **Trang chủ** (chọn chi nhánh) | trình duyệt | `…/` |
 | **Máy bốc số** (kiosk cảm ứng) | `kiosk/` | chạy trên máy đặt ở sảnh từng chi nhánh |
 | **Máy gọi số** (bàn cán bộ) | trình duyệt | `…/b/<mã>/counter` |
@@ -36,10 +36,10 @@ Chạy như production (waitress) trừ khi đặt `GOISO_DEBUG=1` (Flask dev + 
 | Biến | Ý nghĩa |
 |---|---|
 | `GOISO_SECRET` | **bắt buộc khi triển khai thật** — khoá ký session Flask |
-| `GOISO_PORT` | cổng (mặc định `5000`, chỉ dùng ở chế độ dev) |
+| `GOISO_PORT` | cổng máy chủ (mặc định `5050`) |
 | `GOISO_DB` | đường dẫn file `.db` khác |
 | `GOISO_DEBUG=1` | bật Flask dev server + tắt kiểm tra `X-Branch-Key` |
-| `GOISO_BASE_URL` | URL gốc công khai, ví dụ `https://goiso.tentinh.vn` (dựng link/QR) |
+| `GOISO_BASE_URL` | URL gốc công khai, ví dụ `https://goiso.kh2959bmt.xyz` (dựng link/QR) |
 | `TURNSTILE_SITE_KEY` / `TURNSTILE_SECRET` | Cloudflare Turnstile cho trang đặt lịch |
 
 ### Lệnh quản lý (`server/manage.py`)
@@ -94,7 +94,7 @@ run_kiosk.bat
 
 | Khoá | Ý nghĩa |
 |---|---|
-| `server_url` | URL máy chủ, ví dụ `https://goiso.tentinh.vn` |
+| `server_url` | URL máy chủ, ví dụ `https://goiso.kh2959bmt.xyz` |
 | `branch_code` | **mã chi nhánh** của máy kiosk này, ví dụ `eakar` |
 | `api_key` | khoá `api_key` của chi nhánh (lấy từ `list-branches` hoặc trang /admin) |
 | `printer_name` | tên máy in nhiệt Windows; `""` = máy in mặc định |
@@ -131,13 +131,28 @@ Biến thể: `?nocursor=1` · `?counters=1,3,5` · `/b/<mã>/display/simple` (m
 
 ## 6. Triển khai thật qua Cloudflare Tunnel
 
-Máy chủ chỉ nghe `127.0.0.1:5000`; Cloudflare Tunnel đưa ra Internet, không cần mở
-cổng vào máy.
+Máy chủ chỉ nghe `127.0.0.1:<GOISO_PORT>` (mặc định **5050** — đổi nếu cổng bận);
+Cloudflare Tunnel đưa ra Internet, không cần mở cổng vào máy.
 
-### 6.1. cloudflared
+### 6.1a. Nếu đã có Tunnel quản lý trên dashboard (khuyên dùng — máy này đang có sẵn)
+
+Máy này đã chạy sẵn `cloudflared` dạng service với **token** (Tunnel tạo từ
+Cloudflare Zero Trust). Không cần `login` / `create` / `config.yml`. Chỉ cần thêm
+**Public Hostname**:
+
+1. Cloudflare **Zero Trust → Networks → Tunnels →** chọn tunnel đang chạy →
+   tab **Public Hostname → Add a public hostname**.
+2. Subdomain `goiso` · Domain `kh2959bmt.xyz` · Type **HTTP** · URL `localhost:5050`.
+3. **Save** — DNS `goiso.kh2959bmt.xyz` được tạo tự động.
+4. Mở `https://goiso.kh2959bmt.xyz/` sau ~30 giây.
+
+> Tunnel này có thể đang phục vụ ứng dụng khác ở `localhost:5000` (vd `qlns_vpdk`).
+> Cứ thêm public hostname mới trỏ `localhost:5050` cho hệ thống gọi số — hai bên
+> chạy song song trên cùng một tunnel.
+
+### 6.1b. Hoặc tạo Tunnel cục bộ mới (nếu chưa có gì)
 
 ```bat
-:: cài (winget) rồi đăng nhập
 winget install --id Cloudflare.cloudflared
 cloudflared tunnel login
 cloudflared tunnel create goiso
@@ -149,29 +164,28 @@ cloudflared tunnel create goiso
 tunnel: goiso
 credentials-file: C:\Users\<user>\.cloudflared\<UUID>.json
 ingress:
-  - hostname: goiso.tentinh.vn
-    service: http://localhost:5000
+  - hostname: goiso.kh2959bmt.xyz
+    service: http://localhost:5050
     originRequest:
-      # SSE: giữ kết nối stream lâu
-      disableChunkedEncoding: false
       connectTimeout: 30s
   - service: http_status:404
 ```
 
 ```bat
-cloudflared tunnel route dns goiso goiso.tentinh.vn
-cloudflared service install      :: chạy nền như Windows service
+cloudflared tunnel route dns goiso goiso.kh2959bmt.xyz
+cloudflared service install
 ```
 
-Đặt `GOISO_BASE_URL=https://goiso.tentinh.vn` và `GOISO_SECRET=<chuỗi ngẫu nhiên>`
-(vào **System Properties → Environment Variables**, hoặc đầu `run_server.bat`).
+Sau khi có hostname: đặt `GOISO_BASE_URL=https://goiso.kh2959bmt.xyz` và
+`GOISO_SECRET=<chuỗi ngẫu nhiên cố định>` ở đầu `run_server.bat` (đã có sẵn), rồi
+khởi động lại máy chủ.
 
 ### 6.2. Cloudflare Access (Zero Trust) — chặn quầy & quản trị
 
 Đặt **Access Application** cho các đường dẫn nội bộ, chỉ cho email cán bộ:
 
-- `goiso.tentinh.vn/admin*`
-- `goiso.tentinh.vn/b/*/counter*`
+- `goiso.kh2959bmt.xyz/admin*`
+- `goiso.kh2959bmt.xyz/b/*/counter*`
 
 **Không** đặt Access cho: `/`, `/b/*/display*`, `/api/b/*/stream`,
 `/api/b/*/config/public`, `/dat-lich`, `/lich-hen/*`, `/api/booking/*`
@@ -182,7 +196,7 @@ Kiosk gọi API kèm `X-Branch-Key` nên không cần qua Access; giữ nguyên 
 
 ### 6.3. Turnstile cho trang đặt lịch
 
-Tạo site Turnstile (domain `goiso.tentinh.vn`), lấy **Site key** + **Secret key**,
+Tạo site Turnstile (domain `goiso.kh2959bmt.xyz`), lấy **Site key** + **Secret key**,
 đặt vào `TURNSTILE_SITE_KEY` / `TURNSTILE_SECRET`. Bật/tắt theo chi nhánh ở tab
 **Đặt lịch online**. Nếu chưa cấu hình secret, máy chủ bỏ qua bước xác thực (chỉ nên
 dùng khi chạy thử).
@@ -218,7 +232,7 @@ Người dân xem/huỷ tại `/lich-hen/<token>`.
                     Internet ──► Cloudflare ──► cloudflared (Windows)
                                    │  (Access chặn /admin, /b/*/counter)
                                    ▼
-                        MÁY CHỦ  server/app.py  (127.0.0.1:5000, waitress)
+                        MÁY CHỦ  server/app.py  (127.0.0.1:5050, waitress)
                         Flask + SQLite (hethong_v2.db)
         SSE(display) / polling(counter,kiosk) / REST
    ┌──────────────┬──────────────────────────┬─────────────────────────┐

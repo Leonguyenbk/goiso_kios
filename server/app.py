@@ -153,7 +153,8 @@ def stream():
     resp = Response(stream_with_context(gen()), mimetype="text/event-stream")
     resp.headers["Cache-Control"] = "no-cache"
     resp.headers["X-Accel-Buffering"] = "no"
-    resp.headers["Connection"] = "keep-alive"
+    # KHÔNG đặt header "Connection" ở đây: đó là hop-by-hop header, waitress (PEP 3333)
+    # sẽ ném AssertionError. Keep-alive do máy chủ/Cloudflare tự quản lý.
     return resp
 
 
