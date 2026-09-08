@@ -131,7 +131,13 @@ có mạng ra Internet; câu đọc được lưu đệm ở `server/tts_cache/`
 Đổi giọng nam/nữ hoặc chuyển về giọng trình duyệt (`tts_mode = "browser"`) trong
 `/admin` → tab **Cấu hình chung** (`tts_voice`, `tts_mode`).
 
-Biến thể: `?nocursor=1` · `?counters=1,3,5` · `/b/<mã>/display/simple` (một số cực lớn).
+**Bật tiếng:** trình duyệt chặn tự phát âm thanh nên lần đầu phải **chạm/nhấn phím**
+để lớp "Chạm để bắt đầu" biến mất — ô ở chân màn hình chuyển **🔊 Đã bật tiếng**
+(xanh). Máy nối TV không có chuột/bàn phím thì mở trình duyệt kèm cờ
+`--autoplay-policy=no-user-gesture-required` rồi vào `…/display?autoplay=1` để bỏ
+qua bước này. Nút **🔊 Thử tiếng** ở chân màn hình để kiểm tra nhanh.
+
+Biến thể: `?nocursor=1` · `?counters=1,3,5` · `?autoplay=1` · `/b/<mã>/display/simple`.
 
 ---
 

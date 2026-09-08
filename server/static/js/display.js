@@ -4,13 +4,23 @@ const $ = (s) => document.querySelector(s);
 const WEEKDAYS = ['Chủ nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
 
 let cfg = { voice_rate: 0.95, voice_repeat: 2, voice_template: 'Xin mời số thứ tự {so}, đến quầy số {quay}', spotlight_seconds: 20 };
-let audioReady = false;
 let spotlightTimer = null;
 let lastCallId = null;
 
 const params = new URLSearchParams(location.search);
 if (params.get('nocursor') === '1') document.body.classList.add('nocursor');
 const onlyCounters = (params.get('counters') || '').split(',').map(s => s.trim()).filter(Boolean);
+// ?autoplay=1: bỏ qua bước "chạm để bắt đầu" (dùng khi trình duyệt TV mở kèm cờ
+// --autoplay-policy=no-user-gesture-required).
+let audioReady = params.get('autoplay') === '1';
+
+function setAudioState(txt, ok) {
+  const el = $('#audio-state');
+  if (!el) return;
+  el.textContent = txt;
+  el.style.background = ok ? '#16a34a' : '#dc2626';
+}
+setAudioState('🔇 Chưa bật tiếng — chạm màn hình', false);
 
 /* -------------------------------------------------- đồng hồ */
 function tickClock() {
@@ -22,16 +32,22 @@ setInterval(tickClock, 1000);
 tickClock();
 
 /* -------------------------------------------------- cổng mở đầu */
+function loadCfg() {
+  fetch(bpath('/config/public')).then(r => r.json()).then(d => { cfg = { ...cfg, ...d.extra }; }).catch(() => {});
+}
 function openGate() {
   audioReady = true;
   chime();
+  setAudioState('🔊 Đã bật tiếng', true);
   const el = document.documentElement;
   if (el.requestFullscreen) el.requestFullscreen().catch(() => {});
-  $('#gate').remove();
-  fetch(bpath('/config/public')).then(r => r.json()).then(d => { cfg = { ...cfg, ...d.extra }; }).catch(() => {});
+  const g = $('#gate'); if (g) g.remove();
+  loadCfg();
   checkVoice();
   setInterval(checkVoice, 4000);
 }
+loadCfg();
+if (audioReady) { const g = $('#gate'); if (g) g.remove(); setAudioState('🔊 Đã bật tiếng (autoplay)', true); }
 
 function checkVoice() {
   const el = $('#novoice');
@@ -47,6 +63,9 @@ window.addEventListener('keydown', () => { if ($('#gate')) openGate(); }, { once
 const tbtn = $('#btn-test');
 if (tbtn) tbtn.addEventListener('click', () => {
   audioReady = true;
+  setAudioState('🔊 Đã bật tiếng', true);
+  loadCfg();
+  const g = $('#gate'); if (g) g.remove();
   const msg = $('#test-msg');
   msg.textContent = 'Đang tải âm thanh…'; msg.style.color = '';
   chime();
@@ -137,7 +156,10 @@ function showSpotlight(ev) {
 }
 
 function announce(ev) {
-  if (!audioReady) return;
+  if (!audioReady) {
+    setAudioState('🔇 Có lượt gọi nhưng CHƯA BẬT TIẾNG — chạm vào màn hình', false);
+    return;
+  }
   chime();
   const text = buildCallSentence(cfg.voice_template, ev.full_no, ev.counter_no);
   setTimeout(() => speakVi(text, {
