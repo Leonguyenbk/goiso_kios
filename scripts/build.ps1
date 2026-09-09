@@ -30,17 +30,29 @@ foreach ($m in @("PyInstaller","customtkinter","PIL","requests","win32print")) {
 }
 
 # --- version metadata cho .exe (Windows) ---
-$vi = ($Version -split '\.')
+# đệm để "1", "1.0", "1.0.0" đều ra đủ 4 số filevers/prodvers
+$p = @($Version -split '\.') + @('0','0','0','0')
 $verInfo = @"
-VSVersionInfo(ffi=FixedFileInfo(filevers=($($vi[0]),$($vi[1]),$($vi[2]),0),
- prodvers=($($vi[0]),$($vi[1]),$($vi[2]),0), mask=0x3f, flags=0x0, OS=0x40004, fileType=0x1, subtype=0x0, date=(0,0)),
- kids=[StringFileInfo([StringTable('040904B0',[
-  StringStruct('CompanyName','Van phong Dang ky Dat dai'),
-  StringStruct('FileDescription','GoSo Kiosk'),
-  StringStruct('FileVersion','$Version'),
-  StringStruct('ProductName','GoSo Kiosk'),
-  StringStruct('ProductVersion','$Version')]))]),
-  VarFileInfo([VarStruct('Translation',[1033,1200])])])
+VSVersionInfo(
+  ffi=FixedFileInfo(
+    filevers=($($p[0]), $($p[1]), $($p[2]), 0),
+    prodvers=($($p[0]), $($p[1]), $($p[2]), 0),
+    mask=0x3f, flags=0x0, OS=0x40004, fileType=0x1, subtype=0x0, date=(0, 0)
+  ),
+  kids=[
+    StringFileInfo([
+      StringTable('040904B0', [
+        StringStruct('CompanyName', 'Van phong Dang ky Dat dai'),
+        StringStruct('FileDescription', 'GoSo Kiosk'),
+        StringStruct('FileVersion', '$Version'),
+        StringStruct('InternalName', 'GoSoKiosk'),
+        StringStruct('ProductName', 'GoSo Kiosk'),
+        StringStruct('ProductVersion', '$Version')
+      ])
+    ]),
+    VarFileInfo([VarStruct('Translation', [1033, 1200])])
+  ]
+)
 "@
 Set-Content -Path (Join-Path $Root "build_version_info.txt") -Value $verInfo -Encoding UTF8
 
