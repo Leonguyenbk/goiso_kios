@@ -3,6 +3,7 @@ import customtkinter as ctk
 
 from config.settings import APP_CONFIG, COLORS
 from ui import assets
+from ui.theme import PX_SIZES
 
 _WD = ["Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy", "Chủ Nhật"]
 
@@ -10,7 +11,7 @@ _WD = ["Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ 
 class Footer(ctk.CTkFrame):
     def __init__(self, master, scaler, **kwargs):
         super().__init__(master, fg_color=COLORS["navy_dark"], corner_radius=0,
-                         height=92, **kwargs)
+                         height=PX_SIZES.get("footer_height", 116), **kwargs)
         self.grid_propagate(False)
         self._scaler = scaler
         self._db_img = None

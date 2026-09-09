@@ -13,17 +13,47 @@ from ui.widgets.footer import Footer
 from ui.widgets.service_card import ServiceCard
 
 
+def _hx(rgb):
+    return f"#{rgb[0]:02x}{rgb[1]:02x}{rgb[2]:02x}"
+
+
 def _avg_hex(pil_img, top=0.0, bottom=0.72):
-    """Màu trung bình của DẢI ngang [top..bottom] của ảnh (nơi có các góc thẻ +
-    khe giữa thẻ). Bỏ phần đáy (cảnh vật đậm) cho khớp vùng quanh thẻ."""
+    """Màu trung bình của DẢI ngang [top..bottom] của ảnh."""
     try:
         im = pil_img.convert("RGB")
         w, h = im.size
         band = im.crop((0, int(h * top), w, max(int(h * top) + 1, int(h * bottom))))
-        r, g, b = band.resize((1, 1)).getpixel((0, 0))
-        return f"#{r:02x}{g:02x}{b:02x}"
+        return _hx(band.resize((1, 1)).getpixel((0, 0)))
     except Exception:  # noqa: BLE001
         return COLORS["bg"]
+
+
+def _border_hex(rgb_img, w, h, rect):
+    """Màu trung bình của VIỀN ngay bên ngoài một thẻ (rect = relx,rely,relw,relh).
+    Lấy 4 dải mảnh sát 4 cạnh thẻ -> khớp màu góc bo tốt nhất có thể."""
+    try:
+        rx, ry, rw, rh = rect
+        x0, y0 = int(rx * w), int(ry * h)
+        x1, y1 = int((rx + rw) * w), int((ry + rh) * h)
+        m = max(6, int(0.02 * w))  # bề dày dải viền
+        strips = [
+            rgb_img.crop((max(0, x0 - m), y0, x0, y1)),                     # trái
+            rgb_img.crop((x1, y0, min(w, x1 + m), y1)),                     # phải
+            rgb_img.crop((x0, max(0, y0 - m), x1, y0)),                     # trên
+            rgb_img.crop((x0, y1, x1, min(h, y1 + m))),                     # dưới
+        ]
+        acc, n = [0, 0, 0], 0
+        for s in strips:
+            if s.width < 1 or s.height < 1:
+                continue
+            px = s.resize((1, 1)).getpixel((0, 0))
+            acc = [acc[i] + px[i] for i in range(3)]
+            n += 1
+        if not n:
+            return _avg_hex(rgb_img)
+        return _hx([round(v / n) for v in acc])
+    except Exception:  # noqa: BLE001
+        return _avg_hex(rgb_img)
 
 
 class MainScreen(ctk.CTkFrame):
@@ -120,6 +150,7 @@ class MainScreen(ctk.CTkFrame):
         self._cards = []
         gap, top, bot = 0.018, 0.05, 0.13
         cw = (1 - gap * 5) / 4
+        self._card_rects = []  # (relx, rely, relw, relh) để lấy màu nền quanh từng thẻ
         for i, s in enumerate(svcs):
             cb = self._callbacks.get(cb_map.get(s["key"], ""), lambda: None)
             card = ServiceCard(
@@ -127,8 +158,10 @@ class MainScreen(ctk.CTkFrame):
                 icon_path=s["icon"], bg_color=s["color"], command=cb,
                 title_font=self.scaler.font("card_title"),
                 desc_font=self.scaler.font("card_desc"))
-            card.place(relx=gap + i * (cw + gap), rely=top, relwidth=cw, relheight=1 - top - bot)
+            rx = gap + i * (cw + gap)
+            card.place(relx=rx, rely=top, relwidth=cw, relheight=1 - top - bot)
             self._cards.append(card)
+            self._card_rects.append((rx, top, cw, 1 - top - bot))
 
     def _on_stage_resize(self, event):
         size = (event.width, event.height)
@@ -148,12 +181,13 @@ class MainScreen(ctk.CTkFrame):
             pil = background.get(w, h)
             self._stage_bg_img = ctk.CTkImage(light_image=pil, dark_image=pil, size=(w, h))
             self._stage_bg.configure(image=self._stage_bg_img)
-            # Góc bo của thẻ (CTkFrame) lộ màu của KHUNG CHA, không lộ ảnh nền phía
-            # sau -> lấy màu trung bình của nền và gán làm màu góc để thẻ liền mạch.
-            avg = _avg_hex(pil)
-            self._stage.configure(fg_color=avg)
-            for c in self._cards:
-                c.configure(bg_color=avg)
+            # Góc bo của thẻ (CTkFrame) lộ MÀU ĐẶC của khung cha (tkinter không có
+            # alpha giữa widget). Lấy màu nền NGAY QUANH từng thẻ gán làm màu góc
+            # để mối nối ít lộ nhất.
+            rgb = pil.convert("RGB")
+            self._stage.configure(fg_color=_avg_hex(pil))
+            for card, rect in zip(self._cards, self._card_rects):
+                card.configure(bg_color=_border_hex(rgb, w, h, rect))
         except Exception as e:  # noqa: BLE001
             print(f"[MainScreen] Lỗi dựng nền: {e}")
 

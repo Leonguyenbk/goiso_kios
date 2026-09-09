@@ -44,15 +44,16 @@ FONT_SIZES = {
     "hero_sub":    25,   # "Vui lòng chọn dịch vụ để lấy số thứ tự"
     "card_title":  32,   # tiêu đề trên thẻ
     "card_desc":   16,   # mô tả trên thẻ
-    "footer_1":    18,   # dòng "PHÒNG DỮ LIỆU - ..."
-    "footer_2":    15,   # dòng "TỔ ỨNG DỤNG - ..."
-    "footer_date": 16,   # "Thứ Tư, 09/09/2026"
-    "footer_clock": 33,  # đồng hồ "07:52"
+    "footer_1":    22,   # dòng "PHÒNG DỮ LIỆU - THÔNG TIN ĐẤT ĐAI"
+    "footer_2":    18,   # dòng "TỔ ỨNG DỤNG VÀ PHÁT TRIỂN CÔNG NGHỆ"
+    "footer_date": 17,   # "Thứ Tư, 09/09/2026"
+    "footer_clock": 35,  # đồng hồ "07:52"
 }
 
 # --------------------------------------------------------- CỠ LOGO & ĐIỂM ẢNH
 PX_SIZES = {
-    "logo": 100,   # cạnh ô logo ở header (px, tại 1920×1080)
+    "logo": 100,          # cạnh ô logo ở header (px, tại 1920×1080)
+    "footer_height": 116,  # chiều cao thanh footer (px)
 }
 
 

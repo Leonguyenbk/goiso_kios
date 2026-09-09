@@ -26,7 +26,7 @@ COLORS = {
     "muted":       "#5B7599",
 }
 
-CARD_RADIUS = 24
+CARD_RADIUS = 20   # độ bo góc thẻ (px). Giảm nếu góc bo lộ màu -> đỡ thấy hơn.
 
 # --------------------------------------------------------- CỠ ICON TRÊN THẺ
 # Tính theo CHIỀU CAO thẻ (tự co khi đổi kích thước màn hình).
