@@ -1,7 +1,7 @@
 # Hệ thống bốc số & gọi số một cửa — **nhiều chi nhánh** + đặt lịch online
 
 Một **máy chủ Flask + SQLite** duy nhất phục vụ **nhiều chi nhánh** (tối đa vài chục),
-mỗi chi nhánh có mã `code` riêng (`eakar`, `buondon`…). Toàn bộ dữ liệu (số thứ tự,
+mỗi chi nhánh có mã `code` riêng (`bmt`, `buondon`…). Toàn bộ dữ liệu (số thứ tự,
 quầy, cấu hình, lịch hẹn) tách theo `branch_id` — các chi nhánh không thấy dữ liệu
 của nhau.
 
@@ -28,7 +28,7 @@ Yêu cầu: Python 3.10+.
 run_server.bat
 ```
 
-Lần đầu `run_server.bat` tự tạo CSDL `hethong_v2.db` + một chi nhánh mẫu `eakar`.
+Lần đầu `run_server.bat` tự tạo CSDL `hethong_v2.db` + một chi nhánh mẫu `bmt` (Buôn Ma Thuột).
 Chạy như production (waitress) trừ khi đặt `GOISO_DEBUG=1` (Flask dev + reload).
 
 ### Biến môi trường
@@ -48,7 +48,7 @@ Chạy như production (waitress) trừ khi đặt `GOISO_DEBUG=1` (Flask dev + 
 cd server
 python manage.py init                              :: tạo CSDL (+ chi nhánh mẫu nếu trống)
 python manage.py set-admin-pw <mật khẩu>           :: mật khẩu trang /admin (toàn hệ thống)
-python manage.py add-branch eakar "Ea Kar" "CHI NHÁNH KHU VỰC EA KAR" "địa chỉ"
+python manage.py add-branch bmt "Buôn Ma Thuột" "CHI NHÁNH KHU VỰC BUÔN MA THUỘT" "địa chỉ"
 python manage.py seed-branches ..\branches.csv     :: tạo hàng loạt từ CSV (code,name,full_name,address)
 python manage.py list-branches                     :: xem chi nhánh + api_key + display_token
 python manage.py regen-key <mã>                    :: tạo lại API key kiosk
@@ -95,7 +95,7 @@ run_kiosk.bat
 | Khoá | Ý nghĩa |
 |---|---|
 | `server_url` | URL máy chủ, ví dụ `https://goiso.kh2959bmt.xyz` |
-| `branch_code` | **mã chi nhánh** của máy kiosk này, ví dụ `eakar` |
+| `branch_code` | **mã chi nhánh** của máy kiosk này, ví dụ `bmt` |
 | `api_key` | khoá `api_key` của chi nhánh (lấy từ `list-branches` hoặc trang /admin) |
 | `printer_name` | tên máy in nhiệt Windows; `""` = máy in mặc định |
 | `paper_width_mm` | `80` hoặc `58` |
@@ -125,7 +125,7 @@ mặc định `admin123` — đổi ngay trong `/admin` → tab **Người dùng
 Tạo tài khoản nhân viên: `/admin` → **Người dùng** → *+ Thêm người dùng*
 (tên đăng nhập, họ tên, mật khẩu, chi nhánh). Hoặc dòng lệnh:
 ```
-python manage.py add-user nvhoan "Nguyễn Văn Hoàn" MatKhau123 eakar
+python manage.py add-user nvhoan "Nguyễn Văn Hoàn" MatKhau123 bmt
 python manage.py list-users
 python manage.py set-user-pw nvhoan MatKhauMoi
 ```

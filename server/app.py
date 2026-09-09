@@ -3,7 +3,7 @@
 Chạy (dev):   python app.py            (http://0.0.0.0:5000, tự reload nếu GOISO_DEBUG=1)
 Chạy (thật):  waitress-serve --listen=127.0.0.1:5000 --threads=32 app:app
 
-Mỗi chi nhánh có mã `code` (vd 'eakar'):
+Mỗi chi nhánh có mã `code` (vd 'bmt'):
   Trang:  /b/<code>/display   /b/<code>/counter   /b/<code>/display/simple
   API:    /api/b/<code>/...
   Quản trị tổng:  /admin   (+ /api/admin/...)

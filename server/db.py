@@ -328,7 +328,7 @@ def create_branch(code, name, full_name, address="", display_order=None):
     """Tạo chi nhánh mới + seed cấu hình mặc định cho chi nhánh đó."""
     code = (code or "").strip().lower()
     if not code or not code.replace("-", "").replace("_", "").isalnum():
-        raise ValueError("Mã chi nhánh chỉ gồm chữ/số/gạch, ví dụ 'eakar'.")
+        raise ValueError("Mã chi nhánh chỉ gồm chữ/số/gạch, ví dụ 'bmt'.")
     with LOCK, get_conn() as conn:
         if conn.execute("SELECT 1 FROM branches WHERE code=?", (code,)).fetchone():
             raise ValueError(f"Chi nhánh '{code}' đã tồn tại.")

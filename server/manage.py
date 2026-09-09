@@ -48,8 +48,8 @@ def main(argv):
     if cmd == "init":
         print("Đã khởi tạo CSDL:", db.DB_PATH)
         if not db.list_branches():
-            b = db.create_branch("eakar", "Ea Kar",
-                                 "CHI NHÁNH KHU VỰC EA KAR", "")
+            b = db.create_branch("bmt", "Buôn Ma Thuột",
+                                 "CHI NHÁNH KHU VỰC BUÔN MA THUỘT", "")
             print("Đã tạo chi nhánh mẫu để chạy thử:")
             _print_branch(b)
 
@@ -63,7 +63,7 @@ def main(argv):
 
     elif cmd == "add-branch":
         if len(argv) < 4:
-            print('VD: python manage.py add-branch eakar "Ea Kar" "CHI NHÁNH KHU VỰC EA KAR" "Thị trấn Ea Kar"')
+            print('VD: python manage.py add-branch bmt "Buôn Ma Thuột" "CHI NHÁNH KHU VỰC BUÔN MA THUỘT" "TP Buôn Ma Thuột"')
             return
         addr = argv[4] if len(argv) > 4 else ""
         try:
@@ -152,7 +152,7 @@ def main(argv):
 
     elif cmd == "add-user":
         if len(argv) < 5:
-            print('VD: python manage.py add-user hoanv "Nguyễn Văn Hoàn" MatKhau123 eakar')
+            print('VD: python manage.py add-user hoanv "Nguyễn Văn Hoàn" MatKhau123 bmt')
             print('    python manage.py add-user sep "Phó phòng" MatKhau123 admin')
             return
         role = "admin" if argv[4].lower() == "admin" else "staff"

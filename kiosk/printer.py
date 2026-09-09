@@ -192,7 +192,7 @@ if __name__ == "__main__":
         "waiting_ahead": 12, "session": "Sáng",
     }
     extra = {"ten_co_quan": "VĂN PHÒNG ĐĂNG KÝ ĐẤT ĐAI",
-             "ten_chi_nhanh": "CHI NHÁNH KHU VỰC EA KAR",
+             "ten_chi_nhanh": "CHI NHÁNH KHU VỰC BUÔN MA THUỘT",
              "qr_enabled": False, "link_qr": ""}
     im = render_ticket(demo, extra, 80)
     im.save(os.path.join(os.path.dirname(__file__), "ticket_demo.png"))

@@ -19,7 +19,7 @@ echo ------------------------------------------------
 python -m pip install -q -r requirements.txt
 
 if not exist "..\hethong_v2.db" (
-  echo [!] Chua co CSDL - dang khoi tao va tao chi nhanh mau "eakar"...
+  echo [!] Chua co CSDL - dang khoi tao va tao chi nhanh mau "bmt"...
   python manage.py init
 )
 
