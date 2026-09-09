@@ -1,8 +1,11 @@
 """Nạp tài nguyên hình ảnh, luôn có phương án dự phòng.
 
 - `logo(px)`            -> CTkImage logo cơ quan (assets/logo.png) hoặc huy hiệu vẽ sẵn.
-- `icon_badge(...)`     -> CTkImage: đĩa trắng bán trong suốt + icon ở giữa (cho thẻ).
-- `plain_icon(...)`     -> CTkImage icon đơn (cho footer / mũi tên).
+- `card_icon(...)`      -> CTkImage icon cho thẻ dịch vụ:
+      * CÓ file assets/icons/<name>.png  -> hiện NGUYÊN TRẠNG (giữ vòng tròn,
+        gradient, chi tiết) qua imaging.load_ctk_image — không recolor/mask/crop tròn.
+      * KHÔNG có file -> vẽ dự phòng: đĩa trắng + hình đơn sắc.
+- `plain_icon(...)`     -> CTkImage icon đơn (footer / mũi tên).
 - `ctk_image(pil, px)`  -> bọc PIL.Image thành CTkImage vuông.
 """
 import os
@@ -10,11 +13,18 @@ import os
 import customtkinter as ctk
 from PIL import Image, ImageDraw
 
-from . import icons
+from . import icons, imaging
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ASSETS_DIR = os.path.join(os.path.dirname(HERE), "assets")
+ICONS_DIR = os.path.join(ASSETS_DIR, "icons")
 LOGO_PATH = os.path.join(ASSETS_DIR, "logo.png")
+
+
+def icon_file(name):
+    """Đường dẫn PNG icon do người dùng đặt (hoặc None nếu chưa có)."""
+    p = os.path.join(ICONS_DIR, f"{name}.png")
+    return p if os.path.isfile(p) else None
 
 
 def _hex(c):
@@ -54,32 +64,56 @@ def logo(px):
     return ctk_image(_draw_emblem(px), px)
 
 
-# --------------------------------------------------------------------- icon
-def icon_badge(name, box_px, icon_color, disc_rgba=(255, 255, 255, 235),
-               glyph_ratio=0.56):
-    """Đĩa tròn trắng bán trong suốt + icon `name` màu `icon_color` ở giữa.
+# --------------------------------------------------------------------- icon thẻ
+def has_card_icon(name):
+    return icon_file(name) is not None
 
-    `glyph_ratio` = kích thước hình icon so với đường kính đĩa (0..1).
+
+def card_icon(name, size_px, card_color, *, pad_ratio=0.06, glyph_ratio=0.56):
+    """CTkImage icon cho thẻ dịch vụ.
+
+    - Có file PNG  -> imaging.load_ctk_image: giữ NGUYÊN ảnh gốc (vòng tròn +
+      gradient + chi tiết), không recolor, không mask, chỉ 1 lần resize LANCZOS,
+      nguồn để ở độ phân giải cao cho màn DPI cao.
+    - Không có file -> đĩa trắng + hình đơn sắc màu `card_color` (dự phòng).
     """
-    box = int(box_px)
-    img = Image.new("RGBA", (box, box), (0, 0, 0, 0))
-    d = ImageDraw.Draw(img)
-    d.ellipse([0, 0, box - 1, box - 1], fill=disc_rgba)
-    ic = icons.load(name, max(8, int(box * glyph_ratio)), icon_color)
-    img.alpha_composite(ic, ((box - ic.width) // 2, (box - ic.height) // 2))
-    return ctk_image(img, box)
+    size_px = max(8, int(size_px))
+    path = icon_file(name)
+    if path:
+        img = imaging.load_ctk_image(path, size_px, pad_ratio=pad_ratio)
+        if img is not None:
+            return img
+    # dự phòng
+    box = size_px
+    canvas = Image.new("RGBA", (box, box), (0, 0, 0, 0))
+    ImageDraw.Draw(canvas).ellipse([0, 0, box - 1, box - 1], fill=(255, 255, 255, 235))
+    glyph = icons.render(name, max(8, int(box * glyph_ratio)), card_color)
+    canvas.alpha_composite(glyph, ((box - glyph.width) // 2, (box - glyph.height) // 2))
+    return ctk_image(canvas, box)
 
 
 def plain_icon(name, px, color="#FFFFFF"):
-    return ctk_image(icons.load(name, int(px), color), px)
+    """Icon đơn sắc cho footer (không cần chất lượng cao như icon thẻ)."""
+    path = icon_file(name)
+    if path:
+        img = imaging.load_ctk_image(path, int(px))
+        if img is not None:
+            return img
+    return ctk_image(icons.render(name, int(px), color), px)
 
 
 def arrow_button_image(px, color="#FFFFFF"):
-    """Vòng tròn viền trắng + mũi tên — nút 'đi tiếp' trên thẻ."""
+    """Nút 'đi tiếp' ở đáy thẻ. Có assets/icons/arrow.png -> dùng nguyên trạng;
+    không thì vẽ vòng tròn viền + mũi tên."""
     box = int(px)
-    img = Image.new("RGBA", (box, box), (0, 0, 0, 0))
-    d = ImageDraw.Draw(img)
+    path = icon_file("arrow")
+    if path:
+        img = imaging.load_ctk_image(path, box)
+        if img is not None:
+            return img
+    canvas = Image.new("RGBA", (box, box), (0, 0, 0, 0))
+    d = ImageDraw.Draw(canvas)
     d.ellipse([2, 2, box - 3, box - 3], outline=_hex(color) + (235,), width=max(2, box // 22))
-    ic = icons.load("arrow", int(box * 0.5), color)
-    img.alpha_composite(ic, ((box - ic.width) // 2, (box - ic.height) // 2))
-    return ctk_image(img, box)
+    ic = icons.render("arrow", int(box * 0.5), color)
+    canvas.alpha_composite(ic, ((box - ic.width) // 2, (box - ic.height) // 2))
+    return ctk_image(canvas, box)

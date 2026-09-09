@@ -121,45 +121,48 @@ PX_SIZES = {
 - Muốn logo to hơn: tăng `"logo"` (vd `80` → `110`).
 - Sửa xong lưu file rồi chạy lại `python app.py`.
 
-## Thay ICON thẻ
+## Icon thẻ dịch vụ
 
 Chép PNG vào **`kiosk/assets/icons/`** với đúng tên:
 `land.png` (Thủ tục đất đai), `secured.png` (Giao dịch bảo đảm),
 `result.png` (Trả kết quả), `appointment.png` (Lấy phiếu hẹn online),
-`arrow.png`, `database.png`. Thiếu file nào thì tự vẽ.
+`arrow.png` (nút đi tiếp), `database.png` (footer).
 
-Hai kiểu file đều dùng được:
+Cơ chế nạp (`ui/imaging.py`):
 
-| File icon | Cách hiển thị |
-|---|---|
-| **PNG nền TRONG SUỐT** (nét icon nằm ở kênh alpha) | Chương trình **tô lại theo màu thẻ** — icon đơn sắc trên đĩa trắng, đúng phong cách ảnh mẫu. **Khuyến nghị.** |
-| **PNG nền ĐẶC** (icon nhiều màu, có nền) | **Giữ nguyên màu gốc**, chỉ thu nhỏ. Dùng khi bạn muốn icon màu riêng. |
+- **Giữ nguyên file PNG gốc** trong `assets/icons/` — không resize/ghi đè.
+- Mở bằng Pillow `convert("RGBA")`, **giữ nguyên alpha**; **không** recolor,
+  **không** tạo nền, **không** mask/crop hình tròn, **không** quantize/threshold.
+- Chỉ **1 lần resize LANCZOS**, trực tiếp từ ảnh gốc → khung vuông độ phân giải
+  cao (≥ 3× cỡ hiển thị, contain — giữ tỉ lệ, chèn padding trong suốt).
+- Bọc `CTkImage(light_image=…, dark_image=…, size=(display, display))` để
+  CustomTkinter tự lo DPI scaling.
+- Cache theo `(đường dẫn, mtime, cỡ)`, giữ tham chiếu chống GC.
+- PNG của bạn **đã có sẵn vòng tròn màu** → chương trình **không vẽ thêm đĩa
+  trắng** phía sau, hiện nguyên trạng (gradient, dấu tích, đường kẻ…).
+- Nếu viền trong suốt thừa nhiều (> 3% mỗi cạnh) mới tự cắt theo bbox alpha
+  rồi **chèn lại padding ~6%** (không cắt sát, không đụng vòng tròn).
+- Thiếu file → tự vẽ icon đơn sắc + đĩa trắng (dự phòng).
 
-> Nếu icon "biến mất" / thành ô đặc: file bạn gửi là PNG nền đặc **màu trắng/sáng**
-> nhưng lại **có chút alpha** → bị tô thành khối. Hãy xuất lại PNG **nền trong
-> suốt thật sự** (transparent), hoặc PNG **hoàn toàn không có alpha**.
-
-### Chỉnh CỠ icon trên thẻ
-
-Mở **`kiosk/config/settings.py`** → sửa `CARD_ICON` (tính theo % chiều cao thẻ,
-tự co theo màn hình):
+### Chỉnh CỠ icon trên thẻ — `kiosk/config/settings.py` → `CARD_ICON`
 
 ```python
 CARD_ICON = {
-    "disc_ratio":  0.28,   # to/nhỏ đĩa tròn trắng chứa icon  (tăng = icon to hơn)
-    "disc_min": 70, "disc_max": 210,
-    "glyph_ratio": 0.56,   # hình icon bên trong đĩa
-    "arrow_ratio": 0.115,  # nút mũi tên ở đáy thẻ
-    "arrow_min": 34, "arrow_max": 82,
+    "size_ratio": 0.30,   # cỡ icon = 30% chiều cao thẻ (~170px ở 1920×1080)
+    "size_min": 96, "size_max": 260,
+    "pad_ratio": 0.06,    # padding khi tự cắt viền trong suốt thừa (5–8%)
+    "fallback_disc_ratio":  0.30,   # chỉ dùng khi THIẾU file PNG
+    "fallback_glyph_ratio": 0.56,
+    "arrow_ratio": 0.115, "arrow_min": 34, "arrow_max": 82,
 }
 ```
 
-## Tại sao file trong `assets/` bị "mờ / ẩn" trong VS Code?
+Muốn icon to hơn: tăng `size_ratio` (vd `0.30` → `0.36`).
 
-Trước đây `assets/logo.png`, `assets/icons/*.png` bị đưa vào `.gitignore` nên
-VS Code hiển thị mờ. **Đã bỏ** — nay logo / ảnh nền / icon bạn đặt vào đều
-hiện bình thường và commit được. Ảnh tự vẽ (khi thiếu file) **không còn ghi ra
-đĩa**, chỉ dựng trong bộ nhớ.
+## File trong `assets/` từng bị "mờ / ẩn" trong VS Code
+
+Đã bỏ chặn `.gitignore` cho `kiosk/assets/*` — logo / nền / icon bạn đặt vào
+nay hiện bình thường và commit được. Ảnh dự phòng tự vẽ **không ghi ra đĩa**.
 
 ## Nối logic bốc số thật
 

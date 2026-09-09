@@ -125,11 +125,16 @@ class ServiceCard(ctk.CTkFrame):
     def _render_images(self, h):
         self._img_job = None
         c = CARD_ICON
-        badge = max(c["disc_min"], min(c["disc_max"], int(h * c["disc_ratio"])))
+        has_file = assets.has_card_icon(self._icon_name)
+        if has_file:
+            size = max(c["size_min"], min(c["size_max"], int(h * c["size_ratio"])))
+        else:  # dự phòng: đĩa trắng có sẵn -> dùng cỡ đĩa
+            size = max(c["size_min"], min(c["size_max"], int(h * c["fallback_disc_ratio"])))
         arrow = max(c["arrow_min"], min(c["arrow_max"], int(h * c["arrow_ratio"])))
         try:
-            self._badge_img = assets.icon_badge(
-                self._icon_name, badge, self._base, glyph_ratio=c["glyph_ratio"])
+            self._badge_img = assets.card_icon(
+                self._icon_name, size, self._base,
+                pad_ratio=c["pad_ratio"], glyph_ratio=c["fallback_glyph_ratio"])
             self._icon.configure(image=self._badge_img)
             self._arrow_img = assets.arrow_button_image(arrow, "#FFFFFF")
             self._arrow.configure(image=self._arrow_img)

@@ -29,13 +29,20 @@ COLORS = {
 CARD_RADIUS = 24
 
 # --------------------------------------------------------- CỠ ICON TRÊN THẺ
-# Tất cả tính theo CHIỀU CAO thẻ (tự co khi đổi kích thước màn hình).
+# Tính theo CHIỀU CAO thẻ (tự co khi đổi kích thước màn hình).
 CARD_ICON = {
-    "disc_ratio":  0.28,   # đường kính đĩa tròn trắng = 28% chiều cao thẻ
-    "disc_min":    70,     # nhỏ nhất / lớn nhất (px)
-    "disc_max":    210,
-    "glyph_ratio": 0.56,   # hình icon bên trong đĩa = 56% đường kính đĩa
-    "arrow_ratio": 0.115,  # nút mũi tên ở đáy thẻ
+    # Cỡ ICON hiển thị. PNG bạn cung cấp (đã có sẵn vòng tròn màu) được hiện
+    # nguyên trạng ở cỡ này, KHÔNG vẽ thêm đĩa trắng phía sau.
+    "size_ratio": 0.30,          # ~170 px ở màn 1920×1080
+    "size_min":   96,
+    "size_max":   260,
+    "pad_ratio":  0.06,          # padding khi tự cắt viền trong suốt thừa (5–8%)
+
+    # CHỈ dùng khi THIẾU file PNG -> vẽ dự phòng: đĩa trắng + hình đơn sắc.
+    "fallback_disc_ratio":  0.30,
+    "fallback_glyph_ratio": 0.56,
+
+    "arrow_ratio": 0.115,        # nút mũi tên ở đáy thẻ
     "arrow_min":   34,
     "arrow_max":   82,
 }
