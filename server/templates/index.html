@@ -11,9 +11,19 @@
 </head>
 <body class="bg-slate-100 text-slate-800 min-h-screen">
   <header class="bg-[#0b5fa5] text-white px-6 py-5">
-    <div class="max-w-4xl mx-auto">
-      <div class="text-lg font-semibold opacity-90">HỆ THỐNG BỐC SỐ &amp; GỌI SỐ MỘT CỬA</div>
-      <div class="text-2xl font-extrabold">Chọn chi nhánh</div>
+    <div class="max-w-4xl mx-auto flex items-center gap-4">
+      <div>
+        <div class="text-lg font-semibold opacity-90">HỆ THỐNG BỐC SỐ &amp; GỌI SỐ MỘT CỬA</div>
+        <div class="text-2xl font-extrabold">Chọn chi nhánh</div>
+      </div>
+      <nav class="ml-auto flex items-center gap-2 text-sm">
+        {% if me %}<span class="opacity-90 mr-1">{{ me.full_name }}</span>{% endif %}
+        {% if me and me.role == 'admin' %}
+        <a href="/admin" class="rounded-lg bg-white/15 hover:bg-white/25 px-3 py-1.5">Quản trị</a>
+        {% endif %}
+        <a href="/dat-lich" class="rounded-lg bg-white/15 hover:bg-white/25 px-3 py-1.5">Đặt lịch hẹn</a>
+        <a href="/login" onclick="fetch('/api/logout',{method:'POST'})" class="rounded-lg bg-white/15 hover:bg-white/25 px-3 py-1.5">Đăng xuất</a>
+      </nav>
     </div>
   </header>
 
@@ -33,11 +43,6 @@
         </div>
       </div>
       {% endfor %}
-    </div>
-    <div class="mt-8 text-sm">
-      <a href="/admin" class="text-[#0b5fa5] underline">Quản trị hệ thống</a>
-      &nbsp;·&nbsp;
-      <a href="/dat-lich" class="text-[#0b5fa5] underline">Đặt lịch hẹn online</a>
     </div>
   </main>
   {% include '_credit.html' %}
