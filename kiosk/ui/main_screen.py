@@ -152,6 +152,5 @@ class MainScreen(ctk.CTkFrame):
         h = self.winfo_height() or self.winfo_screenheight()
         changed = self.scaler.update(w, h)
         if changed or force:
-            lp = max(48, self.scaler.s(78))
-            self._logo_img = assets.logo(lp)
+            self._logo_img = assets.logo(self.scaler.px("logo"))  # cỡ trong theme.PX_SIZES
             self._logo.configure(image=self._logo_img)

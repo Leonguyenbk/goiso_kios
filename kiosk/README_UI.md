@@ -92,6 +92,35 @@ các khoá bên dưới vào cùng cấp với `server_url`, `branch_code`...):
 - Vùng header và lời chào luôn giữ nền sáng phẳng để dễ đọc — ảnh nền hiển thị ở
   khu vực 4 thẻ trở xuống.
 
+## Chỉnh CỠ CHỮ và CỠ LOGO
+
+Mở **`kiosk/ui/theme.py`** — tất cả nằm ở đầu file:
+
+```python
+FONT_SIZES = {
+    "org":         36,   # "VĂN PHÒNG ĐĂNG KÝ ĐẤT ĐAI"
+    "branch":      21,   # "CHI NHÁNH KHU VỰC ..."
+    "slogan":      14,   # slogan trái
+    "right_slo":   14,   # slogan phải
+    "hero":        62,   # "KÍNH CHÀO QUÝ KHÁCH"
+    "hero_sub":    25,   # dòng mô tả dưới lời chào
+    "card_title":  32,   # tiêu đề trên thẻ
+    "card_desc":   16,   # mô tả trên thẻ
+    "footer_1":    18,   # "PHÒNG DỮ LIỆU - ..."
+    "footer_2":    15,   # "TỔ ỨNG DỤNG - ..."
+    "footer_date": 16,   # ngày ở footer
+    "footer_clock": 33,  # đồng hồ
+}
+
+PX_SIZES = {
+    "logo": 80,          # cạnh ô logo ở header
+}
+```
+
+- Số là **cỡ ở màn hình 1920×1080**; màn nhỏ hơn tự thu theo tỉ lệ.
+- Muốn logo to hơn: tăng `"logo"` (vd `80` → `110`).
+- Sửa xong lưu file rồi chạy lại `python app.py`.
+
 ## Thay ICON thẻ (tuỳ chọn)
 
 Chép PNG **nét trắng, nền trong suốt** vào `kiosk/assets/icons/` với đúng tên:

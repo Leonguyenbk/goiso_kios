@@ -1,8 +1,12 @@
 """Font & tiện ích co giãn theo kích thước màn hình.
 
-Thiết kế gốc chuẩn ở 1920x1080 (hệ số 1.0). Ở độ phân giải khác, gọi
-`Scaler.update(width, height)` để tính lại hệ số; các `CTkFont` đã đăng ký sẽ
-tự đổi cỡ chữ. Bố cục dùng grid + weight nên tự giãn, phần này chỉ lo cỡ chữ.
+╔══════════════════════════════════════════════════════════════════════════╗
+║  SỬA CỠ CHỮ / LOGO Ở ĐÂY                                                 ║
+║  - Đổi số trong FONT_SIZES  -> cỡ chữ các thành phần                     ║
+║  - Đổi số trong PX_SIZES    -> cỡ logo (và vài kích thước điểm ảnh khác) ║
+║  Số ghi ở đây là cỡ chuẩn tại màn hình 1920×1080; màn nhỏ hơn tự thu     ║
+║  lại theo tỉ lệ. Sửa xong chạy lại `python app.py` là thấy ngay.         ║
+╚══════════════════════════════════════════════════════════════════════════╝
 """
 import customtkinter as ctk
 
@@ -29,20 +33,26 @@ def font_family():
     return _FAMILY
 
 
-# Cỡ chữ "gốc" (ở màn hình 1920x1080)
-BASE_SIZES = {
-    "org":        36,
-    "slogan":     14,
-    "branch":     21,
-    "right_slo":  14,
-    "hero":       62,
-    "hero_sub":   25,
-    "card_title": 32,
-    "card_desc":  16,
-    "footer_1":   18,
-    "footer_2":   15,
-    "footer_date": 16,
-    "footer_clock": 33,
+# --------------------------------------------------------------------- CỠ CHỮ
+# (điểm ảnh, ở màn hình chuẩn 1920×1080)
+FONT_SIZES = {
+    "org":         36,   # "VĂN PHÒNG ĐĂNG KÝ ĐẤT ĐAI"
+    "branch":      21,   # "CHI NHÁNH KHU VỰC ..."
+    "slogan":      14,   # slogan trái
+    "right_slo":   14,   # slogan phải
+    "hero":        62,   # "KÍNH CHÀO QUÝ KHÁCH"
+    "hero_sub":    25,   # "Vui lòng chọn dịch vụ để lấy số thứ tự"
+    "card_title":  32,   # tiêu đề trên thẻ
+    "card_desc":   16,   # mô tả trên thẻ
+    "footer_1":    18,   # dòng "PHÒNG DỮ LIỆU - ..."
+    "footer_2":    15,   # dòng "TỔ ỨNG DỤNG - ..."
+    "footer_date": 16,   # "Thứ Tư, 09/09/2026"
+    "footer_clock": 33,  # đồng hồ "07:52"
+}
+
+# --------------------------------------------------------- CỠ LOGO & ĐIỂM ẢNH
+PX_SIZES = {
+    "logo": 80,   # cạnh ô logo ở header (px, tại 1920×1080)
 }
 
 
@@ -57,7 +67,7 @@ class Scaler:
             "org": "bold", "hero": "bold", "card_title": "bold",
             "footer_1": "bold", "footer_clock": "bold", "branch": "bold",
         }
-        for key, size in BASE_SIZES.items():
+        for key, size in FONT_SIZES.items():
             self._fonts[key] = ctk.CTkFont(
                 family=fam, size=size, weight=weights.get(key, "normal"))
 
@@ -71,9 +81,13 @@ class Scaler:
         if abs(factor - self.factor) < 0.02:
             return False
         self.factor = factor
-        for key, size in BASE_SIZES.items():
+        for key, size in FONT_SIZES.items():
             self._fonts[key].configure(size=max(9, round(size * factor)))
         return True
+
+    def px(self, key):
+        """Kích thước điểm ảnh (từ PX_SIZES) đã co theo màn hình."""
+        return max(8, round(PX_SIZES[key] * self.factor))
 
     def s(self, px):
         """Co giãn một số pixel bất kỳ (padding, kích thước icon...)."""
