@@ -7,7 +7,7 @@ import os
 
 import customtkinter as ctk
 
-from config.settings import CARD_RADIUS
+from config.settings import CARD_ICON, CARD_RADIUS
 from ui import assets
 
 
@@ -124,10 +124,12 @@ class ServiceCard(ctk.CTkFrame):
 
     def _render_images(self, h):
         self._img_job = None
-        badge = max(64, min(190, int(h * 0.26)))
-        arrow = max(34, min(78, int(h * 0.115)))
+        c = CARD_ICON
+        badge = max(c["disc_min"], min(c["disc_max"], int(h * c["disc_ratio"])))
+        arrow = max(c["arrow_min"], min(c["arrow_max"], int(h * c["arrow_ratio"])))
         try:
-            self._badge_img = assets.icon_badge(self._icon_name, badge, self._base)
+            self._badge_img = assets.icon_badge(
+                self._icon_name, badge, self._base, glyph_ratio=c["glyph_ratio"])
             self._icon.configure(image=self._badge_img)
             self._arrow_img = assets.arrow_button_image(arrow, "#FFFFFF")
             self._arrow.configure(image=self._arrow_img)

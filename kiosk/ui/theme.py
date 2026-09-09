@@ -37,7 +37,7 @@ def font_family():
 # (điểm ảnh, ở màn hình chuẩn 1920×1080)
 FONT_SIZES = {
     "org":         36,   # "VĂN PHÒNG ĐĂNG KÝ ĐẤT ĐAI"
-    "branch":      21,   # "CHI NHÁNH KHU VỰC ..."
+    "branch":      26,   # "CHI NHÁNH KHU VỰC ..."
     "slogan":      14,   # slogan trái
     "right_slo":   14,   # slogan phải
     "hero":        62,   # "KÍNH CHÀO QUÝ KHÁCH"
@@ -52,7 +52,7 @@ FONT_SIZES = {
 
 # --------------------------------------------------------- CỠ LOGO & ĐIỂM ẢNH
 PX_SIZES = {
-    "logo": 80,   # cạnh ô logo ở header (px, tại 1920×1080)
+    "logo": 100,   # cạnh ô logo ở header (px, tại 1920×1080)
 }
 
 

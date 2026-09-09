@@ -40,6 +40,8 @@ def _draw_emblem(px):
 
 
 def logo(px):
+    """Nạp assets/logo.png (nếu có) hoặc vẽ huy hiệu tạm — không ghi ra đĩa."""
+    px = max(8, int(px))
     try:
         if os.path.isfile(LOGO_PATH):
             im = Image.open(LOGO_PATH).convert("RGBA")
@@ -49,24 +51,21 @@ def logo(px):
             return ctk_image(canvas, px)
     except Exception as e:  # noqa: BLE001
         print(f"[assets] Lỗi đọc logo {LOGO_PATH}: {e} — dùng huy hiệu vẽ sẵn.")
-    emblem = _draw_emblem(px)
-    try:
-        os.makedirs(ASSETS_DIR, exist_ok=True)
-        if not os.path.isfile(LOGO_PATH):
-            _draw_emblem(256).save(LOGO_PATH)
-    except Exception:  # noqa: BLE001
-        pass
-    return ctk_image(emblem, px)
+    return ctk_image(_draw_emblem(px), px)
 
 
 # --------------------------------------------------------------------- icon
-def icon_badge(name, box_px, icon_color, disc_rgba=(255, 255, 255, 235)):
-    """Đĩa tròn trắng bán trong suốt + icon `name` màu `icon_color` ở giữa."""
+def icon_badge(name, box_px, icon_color, disc_rgba=(255, 255, 255, 235),
+               glyph_ratio=0.56):
+    """Đĩa tròn trắng bán trong suốt + icon `name` màu `icon_color` ở giữa.
+
+    `glyph_ratio` = kích thước hình icon so với đường kính đĩa (0..1).
+    """
     box = int(box_px)
     img = Image.new("RGBA", (box, box), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
     d.ellipse([0, 0, box - 1, box - 1], fill=disc_rgba)
-    ic = icons.load(name, int(box * 0.56), icon_color)
+    ic = icons.load(name, max(8, int(box * glyph_ratio)), icon_color)
     img.alpha_composite(ic, ((box - ic.width) // 2, (box - ic.height) // 2))
     return ctk_image(img, box)
 

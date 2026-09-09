@@ -92,22 +92,25 @@ def render(name, px, color="#FFFFFF"):
 
 
 def load(name, px, color="#FFFFFF"):
-    """Nạp assets/icons/<name>.png (tô lại màu) hoặc tự vẽ + lưu bản trắng gốc."""
+    """Nạp assets/icons/<name>.png (nếu bạn có đặt) hoặc tự vẽ trong bộ nhớ.
+
+    - PNG có nền TRONG SUỐT (hình nằm ở kênh alpha): tô lại theo `color`
+      (icon trắng/đơn sắc trên thẻ, đúng phong cách ảnh mẫu).
+    - PNG KHÔNG có nền trong suốt (icon nhiều màu, nền đặc): GIỮ NGUYÊN màu gốc,
+      chỉ thu về `px` — để icon bạn gửi hiển thị đúng, không bị biến thành ô đặc.
+    - Không có file: tự vẽ (không ghi ra đĩa).
+    """
+    px = max(8, int(px))
     path = os.path.join(ICONS_DIR, f"{name}.png")
     try:
         if os.path.isfile(path):
             base = Image.open(path).convert("RGBA").resize((px, px), Image.LANCZOS)
+            alpha = base.getchannel("A")
+            if alpha.getextrema()[0] >= 250:     # gần như đục hoàn toàn -> giữ màu gốc
+                return base
             solid = Image.new("RGBA", base.size, _hex(color) + (255,))
-            solid.putalpha(base.getchannel("A"))
+            solid.putalpha(alpha)
             return solid
     except Exception as e:  # noqa: BLE001
         print(f"[icons] Lỗi đọc {path}: {e} — dùng icon vẽ sẵn.")
-
-    img = render(name, px, color)
-    try:
-        os.makedirs(ICONS_DIR, exist_ok=True)
-        if not os.path.isfile(path):
-            render(name, 256, "#FFFFFF").save(path)
-    except Exception:  # noqa: BLE001
-        pass
-    return img
+    return render(name, px, color)

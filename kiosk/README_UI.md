@@ -121,11 +121,45 @@ PX_SIZES = {
 - Muốn logo to hơn: tăng `"logo"` (vd `80` → `110`).
 - Sửa xong lưu file rồi chạy lại `python app.py`.
 
-## Thay ICON thẻ (tuỳ chọn)
+## Thay ICON thẻ
 
-Chép PNG **nét trắng, nền trong suốt** vào `kiosk/assets/icons/` với đúng tên:
-`land.png`, `secured.png`, `result.png`, `appointment.png`, `arrow.png`,
-`database.png`. Chương trình tự tô lại màu theo màu thẻ. Thiếu file nào thì tự vẽ.
+Chép PNG vào **`kiosk/assets/icons/`** với đúng tên:
+`land.png` (Thủ tục đất đai), `secured.png` (Giao dịch bảo đảm),
+`result.png` (Trả kết quả), `appointment.png` (Lấy phiếu hẹn online),
+`arrow.png`, `database.png`. Thiếu file nào thì tự vẽ.
+
+Hai kiểu file đều dùng được:
+
+| File icon | Cách hiển thị |
+|---|---|
+| **PNG nền TRONG SUỐT** (nét icon nằm ở kênh alpha) | Chương trình **tô lại theo màu thẻ** — icon đơn sắc trên đĩa trắng, đúng phong cách ảnh mẫu. **Khuyến nghị.** |
+| **PNG nền ĐẶC** (icon nhiều màu, có nền) | **Giữ nguyên màu gốc**, chỉ thu nhỏ. Dùng khi bạn muốn icon màu riêng. |
+
+> Nếu icon "biến mất" / thành ô đặc: file bạn gửi là PNG nền đặc **màu trắng/sáng**
+> nhưng lại **có chút alpha** → bị tô thành khối. Hãy xuất lại PNG **nền trong
+> suốt thật sự** (transparent), hoặc PNG **hoàn toàn không có alpha**.
+
+### Chỉnh CỠ icon trên thẻ
+
+Mở **`kiosk/config/settings.py`** → sửa `CARD_ICON` (tính theo % chiều cao thẻ,
+tự co theo màn hình):
+
+```python
+CARD_ICON = {
+    "disc_ratio":  0.28,   # to/nhỏ đĩa tròn trắng chứa icon  (tăng = icon to hơn)
+    "disc_min": 70, "disc_max": 210,
+    "glyph_ratio": 0.56,   # hình icon bên trong đĩa
+    "arrow_ratio": 0.115,  # nút mũi tên ở đáy thẻ
+    "arrow_min": 34, "arrow_max": 82,
+}
+```
+
+## Tại sao file trong `assets/` bị "mờ / ẩn" trong VS Code?
+
+Trước đây `assets/logo.png`, `assets/icons/*.png` bị đưa vào `.gitignore` nên
+VS Code hiển thị mờ. **Đã bỏ** — nay logo / ảnh nền / icon bạn đặt vào đều
+hiện bình thường và commit được. Ảnh tự vẽ (khi thiếu file) **không còn ghi ra
+đĩa**, chỉ dựng trong bộ nhớ.
 
 ## Nối logic bốc số thật
 

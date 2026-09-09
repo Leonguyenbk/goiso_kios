@@ -40,8 +40,4 @@ Thumbs.db
 # Bộ nhớ đệm giọng đọc do máy chủ tạo
 server/tts_cache/
 
-# Kiosk UI: tài nguyên tự sinh khi chạy (thay bằng file thật nếu muốn)
-kiosk/assets/logo.png
-kiosk/assets/background.png
-kiosk/assets/icons/*.png
 kiosk/**/__pycache__/
