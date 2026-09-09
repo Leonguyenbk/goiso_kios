@@ -2,6 +2,14 @@
   "server_url": "https://goiso.kh2959bmt.xyz",
   "branch_code": "eakar",
   "api_key": "DAN-API-KEY-CHI-NHANH-VAO-DAY",
+
+  "branch_name": "CHI NHÁNH KHU VỰC EA KAR",
+  "organization_name": "VĂN PHÒNG ĐĂNG KÝ ĐẤT ĐAI",
+  "left_slogan": "CÔNG KHAI - MINH BẠCH - CHUYÊN NGHIỆP - VÌ NGƯỜI DÂN",
+  "right_slogan_lines": ["ĐỒNG HÀNH CÙNG NGƯỜI DÂN", "VÌ QUẢN LÝ ĐẤT ĐAI HIỆU QUẢ"],
+  "footer_department": "PHÒNG DỮ LIỆU - THÔNG TIN ĐẤT ĐAI",
+  "footer_team": "TỔ ỨNG DỤNG VÀ PHÁT TRIỂN CÔNG NGHỆ",
+
   "printer_name": "",
   "paper_width_mm": 80,
   "preview_only": false,

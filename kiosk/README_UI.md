@@ -41,30 +41,62 @@ kiosk/
                              — thiếu thì tự vẽ và lưu lại
 ```
 
-## Cấu hình theo chi nhánh — KHÔNG sửa code
+## Cấu hình theo TỪNG chi nhánh — KHÔNG sửa code
 
-Đặt trong `kiosk/config.json` (đã có sẵn file này):
+Header hiển thị **2 dòng**:
+
+```
+VĂN PHÒNG ĐĂNG KÝ ĐẤT ĐAI          ← organization_name (chung 24 chi nhánh)
+CHI NHÁNH KHU VỰC ...              ← branch_name (đặt riêng mỗi máy)
+CÔNG KHAI - MINH BẠCH - ...        ← left_slogan
+```
+
+Chỉnh trong `kiosk/config.json` của **máy kiosk đó** (file này đã có sẵn — thêm
+các khoá bên dưới vào cùng cấp với `server_url`, `branch_code`...):
 
 ```json
 {
+  "server_url": "https://goiso.kh2959bmt.xyz",
+  "branch_code": "bmt",
+  "api_key": "...",
+
   "branch_name": "CHI NHÁNH KHU VỰC BUÔN MA THUỘT",
   "organization_name": "VĂN PHÒNG ĐĂNG KÝ ĐẤT ĐAI",
+  "left_slogan": "CÔNG KHAI - MINH BẠCH - CHUYÊN NGHIỆP - VÌ NGƯỜI DÂN",
+  "right_slogan_lines": ["ĐỒNG HÀNH CÙNG NGƯỜI DÂN", "VÌ QUẢN LÝ ĐẤT ĐAI HIỆU QUẢ"],
   "footer_department": "PHÒNG DỮ LIỆU - THÔNG TIN ĐẤT ĐAI",
   "footer_team": "TỔ ỨNG DỤNG VÀ PHÁT TRIỂN CÔNG NGHỆ",
   "fullscreen": true
 }
 ```
 
-Hoặc biến môi trường: `KIOSK_BRANCH_NAME`.
-`branch_name` chỉ hiển thị dạng dòng nhỏ dưới tên Văn phòng; để trống = ẩn.
+- Chỉ **bắt buộc** đặt `branch_name`. Các khoá khác đã có mặc định đúng, để trống cũng được.
+- Cách khác: đặt biến môi trường `KIOSK_BRANCH_NAME="CHI NHÁNH KHU VỰC ..."`.
+- `branch_name` để trống ("") → header chỉ còn 1 dòng tên Văn phòng.
 
-## Thay logo / ảnh nền
+## Thay LOGO
 
-- Bỏ file `assets/logo.png` (nền trong suốt) → dùng ngay.
-- Bỏ file `assets/background.png` (khuyến nghị 1920×1080, **không chữ chi nhánh**)
-  → thay cho ảnh nền tự dựng.
-- Bỏ icon riêng vào `assets/icons/<tên>.png` (nét trắng, nền trong suốt) → tự
-  tô lại màu theo thẻ.
+- Chép file **`kiosk/assets/logo.png`** — PNG **nền trong suốt**, hình vuông là
+  đẹp nhất (vd 512×512). Cỡ bất kỳ, chương trình tự thu về vừa header.
+- Không có file này → tự vẽ huy hiệu tạm (tròn xanh + núi trắng + vòng cung lá).
+- Logo dùng chung 24 chi nhánh (logo cơ quan), **không** để logo riêng từng chi nhánh.
+
+## Thay ẢNH NỀN
+
+- Chép file **`kiosk/assets/background.png`** — khuyến nghị **1920×1080**,
+  **KHÔNG chứa chữ / tên chi nhánh** (dùng chung 24 chi nhánh).
+- Ảnh được **phủ kín, không kéo méo** (phóng theo cạnh lớn rồi cắt giữa) vào vùng
+  4 thẻ. Nên là ảnh nhẹ, tông xanh nhạt để chữ trên thẻ vẫn rõ.
+- Không có file này → tự dựng nền (trời gradient + hoạ tiết trống đồng mờ + núi +
+  phố + cây + dải nước).
+- Vùng header và lời chào luôn giữ nền sáng phẳng để dễ đọc — ảnh nền hiển thị ở
+  khu vực 4 thẻ trở xuống.
+
+## Thay ICON thẻ (tuỳ chọn)
+
+Chép PNG **nét trắng, nền trong suốt** vào `kiosk/assets/icons/` với đúng tên:
+`land.png`, `secured.png`, `result.png`, `appointment.png`, `arrow.png`,
+`database.png`. Chương trình tự tô lại màu theo màu thẻ. Thiếu file nào thì tự vẽ.
 
 ## Nối logic bốc số thật
 

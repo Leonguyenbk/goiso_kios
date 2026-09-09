@@ -54,15 +54,17 @@ class MainScreen(ctk.CTkFrame):
                                  font=self.scaler.font("org"), text_color=COLORS["text_navy"],
                                  fg_color="transparent", anchor="w", justify="left")
         self._org.pack(anchor="w")
+        # Tên chi nhánh — dòng riêng, rõ, ngay dưới tên Văn phòng (theo từng chi nhánh).
+        branch = (APP_CONFIG.get("branch_name") or "").strip()
+        self._branch = ctk.CTkLabel(block, text=branch, font=self.scaler.font("branch"),
+                                    text_color=COLORS["navy"], fg_color="transparent",
+                                    anchor="w", justify="left")
+        if branch:
+            self._branch.pack(anchor="w", pady=(1, 0))
         self._slogan = ctk.CTkLabel(block, text=APP_CONFIG["left_slogan"],
                                     font=self.scaler.font("slogan"), text_color=COLORS["muted"],
                                     fg_color="transparent", anchor="w", justify="left")
-        self._slogan.pack(anchor="w")
-        self._branch = ctk.CTkLabel(block, text=APP_CONFIG.get("branch_name", "") or "",
-                                    font=self.scaler.font("branch"), text_color=COLORS["navy"],
-                                    fg_color="transparent", anchor="w", justify="left")
-        if (APP_CONFIG.get("branch_name") or "").strip():
-            self._branch.pack(anchor="w", pady=(2, 0))
+        self._slogan.pack(anchor="w", pady=(3, 0))
 
         right = ctk.CTkFrame(hdr, fg_color="transparent")
         right.grid(row=0, column=2, sticky="e")

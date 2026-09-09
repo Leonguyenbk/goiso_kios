@@ -104,16 +104,27 @@ def build(width=NATIVE[0], height=NATIVE[1]):
     return img.convert("RGB")
 
 
+def _cover(img, w, h):
+    """Phủ kín (w, h) không méo: phóng theo cạnh lớn rồi cắt giữa."""
+    w, h = int(w), int(h)
+    src_w, src_h = img.size
+    scale = max(w / src_w, h / src_h)
+    nw, nh = max(1, round(src_w * scale)), max(1, round(src_h * scale))
+    img = img.resize((nw, nh), Image.LANCZOS)
+    x, y = (nw - w) // 2, (nh - h) // 2
+    return img.crop((x, y, x + w, y + h))
+
+
 def get(width, height):
     """Ảnh nền đúng kích thước vùng thẻ.
 
     Ưu tiên `assets/background.png` do chi nhánh tự đặt (dùng chung 24 chi nhánh,
-    KHÔNG chứa chữ chi nhánh). Không có thì tự dựng theo đúng tỉ lệ hiện tại.
+    KHÔNG chứa chữ chi nhánh) — phủ kín, không méo. Không có thì tự dựng theo
+    đúng tỉ lệ hiện tại.
     """
     try:
         if os.path.isfile(BG_PATH):
-            return Image.open(BG_PATH).convert("RGB").resize(
-                (int(width), int(height)), Image.LANCZOS)
+            return _cover(Image.open(BG_PATH).convert("RGB"), width, height)
     except Exception as e:  # noqa: BLE001
         print(f"[background] Lỗi đọc {BG_PATH}: {e} — tự dựng nền.")
     return build(width, height)

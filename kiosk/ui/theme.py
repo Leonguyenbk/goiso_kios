@@ -31,9 +31,9 @@ def font_family():
 
 # Cỡ chữ "gốc" (ở màn hình 1920x1080)
 BASE_SIZES = {
-    "org":        37,
-    "slogan":     15,
-    "branch":     16,
+    "org":        36,
+    "slogan":     14,
+    "branch":     21,
     "right_slo":  14,
     "hero":       62,
     "hero_sub":   25,
