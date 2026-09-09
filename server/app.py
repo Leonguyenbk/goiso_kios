@@ -216,8 +216,14 @@ def stream():
 
 # ----------------------------------------------------------------- trang web
 @app.route("/")
+@login_required
 def index():
-    return render_template("index.html", branches=db.list_branches(active_only=True))
+    u = g.user
+    if u["role"] != "admin":
+        b = db.get_branch_by_id(u["branch_id"])
+        if b:
+            return redirect(f"/b/{b['code']}/counter")
+    return render_template("index.html", branches=db.list_branches(active_only=True), me=u)
 
 
 @app.route("/b/<code>/display")
