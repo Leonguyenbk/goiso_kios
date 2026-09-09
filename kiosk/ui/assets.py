@@ -50,17 +50,12 @@ def _draw_emblem(px):
 
 
 def logo(px):
-    """Nạp assets/logo.png (nếu có) hoặc vẽ huy hiệu tạm — không ghi ra đĩa."""
+    """Nạp assets/logo.png (giữ nguyên trạng, độ phân giải cao) hoặc vẽ huy hiệu tạm."""
     px = max(8, int(px))
-    try:
-        if os.path.isfile(LOGO_PATH):
-            im = Image.open(LOGO_PATH).convert("RGBA")
-            im.thumbnail((px, px), Image.LANCZOS)
-            canvas = Image.new("RGBA", (px, px), (0, 0, 0, 0))
-            canvas.paste(im, ((px - im.width) // 2, (px - im.height) // 2), im)
-            return ctk_image(canvas, px)
-    except Exception as e:  # noqa: BLE001
-        print(f"[assets] Lỗi đọc logo {LOGO_PATH}: {e} — dùng huy hiệu vẽ sẵn.")
+    if os.path.isfile(LOGO_PATH):
+        img = imaging.load_ctk_image(LOGO_PATH, px, autocrop=False)
+        if img is not None:
+            return img
     return ctk_image(_draw_emblem(px), px)
 
 

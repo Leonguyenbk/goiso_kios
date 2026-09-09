@@ -36,16 +36,16 @@ def font_family():
 # --------------------------------------------------------------------- CỠ CHỮ
 # (điểm ảnh, ở màn hình chuẩn 1920×1080)
 FONT_SIZES = {
-    "org":         36,   # "VĂN PHÒNG ĐĂNG KÝ ĐẤT ĐAI"
-    "branch":      26,   # "CHI NHÁNH KHU VỰC ..."
-    "slogan":      14,   # slogan trái
-    "right_slo":   14,   # slogan phải
-    "hero":        62,   # "KÍNH CHÀO QUÝ KHÁCH"
+    "org":         40,   # "VĂN PHÒNG ĐĂNG KÝ ĐẤT ĐAI"
+    "branch":      36,   # "CHI NHÁNH KHU VỰC ..."
+    "slogan":      20,   # slogan trái
+    "right_slo":   20,   # slogan phải
+    "hero":        54,   # "KÍNH CHÀO QUÝ KHÁCH"
     "hero_sub":    25,   # "Vui lòng chọn dịch vụ để lấy số thứ tự"
     "card_title":  32,   # tiêu đề trên thẻ
     "card_desc":   16,   # mô tả trên thẻ
-    "footer_1":    22,   # dòng "PHÒNG DỮ LIỆU - THÔNG TIN ĐẤT ĐAI"
-    "footer_2":    18,   # dòng "TỔ ỨNG DỤNG VÀ PHÁT TRIỂN CÔNG NGHỆ"
+    "footer_1":    30,   # dòng "PHÒNG DỮ LIỆU - THÔNG TIN ĐẤT ĐAI"
+    "footer_2":    26,   # dòng "TỔ ỨNG DỤNG VÀ PHÁT TRIỂN CÔNG NGHỆ"
     "footer_date": 17,   # "Thứ Tư, 09/09/2026"
     "footer_clock": 35,  # đồng hồ "07:52"
 }
