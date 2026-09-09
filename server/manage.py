@@ -13,6 +13,9 @@
   python manage.py add-user <user> "<Họ tên>" <mật khẩu> <mã chi nhánh|admin>
   python manage.py list-users
   python manage.py set-user-pw <user> <mật khẩu mới>
+  python manage.py import-users <nhansu.csv> [mật_khẩu_mặc_định]
+        # CSV cột: branch,full_name[,password]  — branch là MÃ hoặc TÊN chi nhánh
+        # username tự sinh: cn<mã>.<tên><chữ đầu các từ còn lại>
 """
 import csv
 import hashlib
@@ -174,6 +177,43 @@ def main(argv):
             return
         db.update_user(argv[1], password=argv[2])
         print("Đã đổi mật khẩu cho", argv[1])
+
+    elif cmd == "import-users":
+        if len(argv) < 2:
+            print("Thiếu CSV. Cột: branch,full_name[,password]")
+            return
+        default_pw = argv[2] if len(argv) > 2 else "123456"
+        # bản đồ tra chi nhánh: mã + tên (bỏ dấu, thường)
+        bmap = {}
+        for b in db.list_branches():
+            bmap[b["code"]] = b["code"]
+            bmap[db.strip_accents(b["name"]).lower().strip()] = b["code"]
+            bmap[db.strip_accents(b["full_name"]).lower().strip()] = b["code"]
+        ok, fail = 0, 0
+        rows_out = []
+        with open(argv[1], encoding="utf-8-sig", newline="") as f:
+            for row in csv.DictReader(f):
+                name = (row.get("full_name") or row.get("hoten") or "").strip()
+                braw = (row.get("branch") or row.get("chi_nhanh") or "").strip()
+                pw = (row.get("password") or "").strip() or default_pw
+                if not name or not braw:
+                    continue
+                code = bmap.get(braw.lower()) or bmap.get(db.strip_accents(braw).lower())
+                if not code:
+                    print(f"  ! không rõ chi nhánh: {braw!r} ({name})")
+                    fail += 1
+                    continue
+                uname = db.unique_username(db.gen_username(code, name))
+                try:
+                    db.create_user(uname, name, pw, role="staff", branch_code=code)
+                    ok += 1
+                    rows_out.append((uname, name, code, pw))
+                except ValueError as e:
+                    print(f"  ! {name}: {e}")
+                    fail += 1
+        print(f"\nĐã tạo {ok} tài khoản, lỗi {fail}.\n")
+        for u, n, c, p in rows_out:
+            print(f"  {u:<24} {p:<12} {c:<10} {n}")
 
     elif cmd == "show-config":
         if len(argv) < 2:

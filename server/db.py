@@ -402,6 +402,42 @@ def _pw_hash(pw):
     return hashlib.sha256((pw or "").encode("utf-8")).hexdigest()
 
 
+def strip_accents(s):
+    """Bỏ dấu tiếng Việt -> ASCII thường (đ/Đ -> d)."""
+    import unicodedata
+    s = (s or "").replace("Đ", "D").replace("đ", "d")
+    s = unicodedata.normalize("NFD", s)
+    s = "".join(c for c in s if unicodedata.category(c) != "Mn")
+    return s
+
+
+def gen_username(branch_code, full_name):
+    """cn<mã>.<tên><chữ-cái-đầu-các-từ-còn-lại>. VD 'Mai Xuân Chiến' @ bmt -> cnbmt.chienmx."""
+    words = ["".join(ch for ch in w if ch.isalnum())
+             for w in strip_accents(full_name).lower().split()]
+    words = [w for w in words if w]
+    code = (branch_code or "").strip().lower()
+    if not words:
+        return f"cn{code}.user"
+    ten, initials = words[-1], "".join(w[0] for w in words[:-1])
+    return f"cn{code}.{ten}{initials}"
+
+
+def unique_username(base):
+    """Thêm hậu tố số nếu username đã tồn tại."""
+    with get_conn() as conn:
+        taken = {r[0] for r in conn.execute(
+            "SELECT username FROM users WHERE username=? OR username LIKE ?",
+            (base, base + "%"),
+        )}
+    if base not in taken:
+        return base
+    i = 2
+    while f"{base}{i}" in taken:
+        i += 1
+    return f"{base}{i}"
+
+
 def _row_to_user(r):
     if not r:
         return None
