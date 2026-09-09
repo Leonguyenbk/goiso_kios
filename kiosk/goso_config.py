@@ -41,6 +41,7 @@ class ConfigApp(ctk.CTk):
 
         self.cfg = appconfig.load()
         self.branches = []               # [{code,name,full_name}]
+        self._branch_by_label = {}       # "full_name  ·  code" -> branch dict
         self.server_ok = False
 
         root = ctk.CTkScrollableFrame(self, fg_color="transparent")
@@ -59,10 +60,16 @@ class ConfigApp(ctk.CTk):
 
         # 2 — CHI NHÁNH
         self._section(root, "2. Chi nhánh")
-        self.cb_branch = ctk.CTkComboBox(root, values=["— kiểm tra máy chủ trước —"], state="disabled")
+        self.cb_branch = ctk.CTkComboBox(root, values=["— kiểm tra máy chủ trước —"],
+                                         state="disabled", command=self._refresh_summary)
         self.cb_branch.grid(sticky="ew", pady=(2, 4))
-        if self.cfg.get("branch_code"):
-            self.cb_branch.configure(values=[self.cfg["branch_code"]]); self.cb_branch.set(self.cfg["branch_code"])
+        ctk.CTkLabel(root, text="API key chi nhánh (X-Branch-Key) — lấy ở trang quản trị:",
+                     text_color="#64748b", font=("Segoe UI", 11)).grid(sticky="w")
+        self.e_apikey = self._entry(root, self.cfg.get("api_key", ""))
+        akrow = ctk.CTkFrame(root, fg_color="transparent"); akrow.grid(sticky="ew", pady=(0, 2))
+        ctk.CTkButton(akrow, text="KIỂM TRA KEY", width=120,
+                      command=self._check_key).pack(side="left")
+        self.lbl_key = ctk.CTkLabel(akrow, text="", anchor="w"); self.lbl_key.pack(side="left", padx=10)
 
         # 3 — MÁY IN
         self._section(root, "3. Máy in")
@@ -161,24 +168,46 @@ class ConfigApp(ctk.CTk):
         self.lbl_server.configure(text=text, text_color="#15803d" if ok else "#b91c1c")
         self._refresh_summary()
 
+    def _check_key(self):
+        b = self._selected_branch()
+        url = self.e_server.get().strip()
+        key = self.e_apikey.get().strip()
+        dev_id = self.e_device.get().strip() or "GOSOCONFIG"
+        if not b:
+            self.lbl_key.configure(text="Chọn chi nhánh trước.", text_color="#b91c1c"); return
+        self.lbl_key.configure(text="Đang kiểm tra...", text_color="#64748b")
+
+        def work():
+            state, msg = ServerClient(url, b["code"], key).verify_branch_key(dev_id)
+            color = {"ok": "#15803d", "bad": "#b91c1c"}.get(state, "#a16207")
+            self.after(0, lambda: self.lbl_key.configure(text=msg, text_color=color))
+
+        threading.Thread(target=work, daemon=True).start()
+
+    PLACEHOLDER = "— chọn chi nhánh —"
+
     def _fill_branches(self, brs):
         self.branches = brs or []
         if not brs:
-            self.cb_branch.configure(values=["(máy chủ chưa có chi nhánh)"], state="normal")
+            self._branch_by_label = {}
+            self.cb_branch.configure(values=["(máy chủ chưa có chi nhánh)"], state="readonly")
+            self.cb_branch.set("(máy chủ chưa có chi nhánh)")
             return
         labels = [f"{b['full_name']}  ·  {b['code']}" for b in brs]
-        self.cb_branch.configure(values=labels, state="normal")
-        cur = (self.cfg.get("branch_code") or "").lower()
-        match = next((l for l, b in zip(labels, brs) if b["code"].lower() == cur), None)
-        self.cb_branch.set(match or labels[0])
+        self._branch_by_label = dict(zip(labels, brs))
+        self.cb_branch.configure(values=[self.PLACEHOLDER] + labels, state="readonly")
+        # Giữ nguyên lựa chọn đang có nếu hợp lệ; nếu chưa có thì theo branch_code đã lưu.
+        keep = self.cb_branch.get()
+        if keep in self._branch_by_label:
+            self.cb_branch.set(keep)
+        else:
+            cur = (self.cfg.get("branch_code") or "").lower()
+            match = next((l for l, b in zip(labels, brs) if b["code"].lower() == cur), None)
+            self.cb_branch.set(match or self.PLACEHOLDER)
         self._refresh_summary()
 
     def _selected_branch(self):
-        txt = self.cb_branch.get()
-        for b in self.branches:
-            if b["code"] in txt or b["full_name"] in txt:
-                return b
-        return None
+        return self._branch_by_label.get(self.cb_branch.get())
 
     def _test_print(self):
         name = self.cb_printer.get().strip()
@@ -214,22 +243,29 @@ class ConfigApp(ctk.CTk):
         self._refresh_summary()
         server = self.e_server.get().strip()
         b = self._selected_branch()
+        key = self.e_apikey.get().strip()
         if not server:
             return self._msg("Chưa nhập địa chỉ máy chủ.", False)
         if not self.server_ok:
             return self._msg("Chưa kiểm tra kết nối máy chủ thành công.", False)
         if not b:
             return self._msg("Chưa chọn chi nhánh.", False)
+        if not key:
+            return self._msg("Chưa nhập API key chi nhánh (X-Branch-Key).", False)
         if not self.v_preview.get() and self.cb_printer.get().startswith("("):
             return self._msg("Chưa chọn máy in (hoặc bật 'Chỉ xem trước').", False)
 
         dev = device.set_device_id(self.e_device.get().strip() or
                                    device.get_or_create(b["code"])["device_id"])
+        state, kmsg = ServerClient(server, b["code"], key).verify_branch_key(dev["device_id"])
+        if state == "bad":
+            return self._msg(kmsg + " — kiểm tra lại ở trang quản trị.", False)
         try:
             cfg = appconfig.load()
             cfg.update({
                 "server_url": server,
                 "branch_code": b["code"], "branch_id": b["id"],
+                "api_key": key,
                 "printer_name": "" if self.cb_printer.get().startswith("(") else self.cb_printer.get().strip(),
                 "paper_width_mm": int(self.paper.get()),
                 "preview_only": bool(self.v_preview.get()),

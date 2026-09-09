@@ -49,6 +49,27 @@ class ServerClient:
         except requests.RequestException as e:
             raise ServerError(f"Không lấy được danh sách chi nhánh: {e}")
 
+    def verify_branch_key(self, device_id="GOSOCONFIG"):
+        """Kiểm tra X-Branch-Key có đúng với chi nhánh không.
+        Trả ('ok'|'bad'|'unknown', thông_báo)."""
+        if not self.branch_code:
+            return "unknown", "Chưa chọn chi nhánh."
+        if not self.api_key:
+            return "bad", "Chưa nhập API key chi nhánh."
+        try:
+            r = requests.post(
+                f"{self.server}/api/b/{self.branch_code}/heartbeat",
+                json={"device_id": device_id, "name": "GoSoConfig",
+                      "status": "config-check"},
+                headers={"X-Branch-Key": self.api_key}, timeout=self.timeout)
+        except requests.RequestException as e:
+            return "unknown", f"Không kiểm tra được API key ({e})."
+        if r.ok:
+            return "ok", "✓ API key hợp lệ."
+        if r.status_code in (401, 403):
+            return "bad", "✗ API key chi nhánh không đúng."
+        return "unknown", f"Máy chủ trả {r.status_code} khi kiểm tra key."
+
     def kiosk_version(self):
         """Bản kiosk mới nhất áp dụng. {} nếu chưa cấu hình / lỗi (không ném)."""
         try:
