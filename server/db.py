@@ -129,6 +129,19 @@ def init_db():
                   active INTEGER DEFAULT 1,
                   created_at TEXT)"""
         )
+        # Thiết bị kiosk (cho heartbeat / auto-update). Không đụng nghiệp vụ bốc số.
+        conn.execute(
+            """CREATE TABLE IF NOT EXISTS devices
+                 (device_id TEXT PRIMARY KEY,
+                  branch_code TEXT DEFAULT '',
+                  name TEXT DEFAULT '',
+                  version TEXT DEFAULT '',
+                  printer TEXT DEFAULT '',
+                  paper_mm INTEGER DEFAULT 80,
+                  status TEXT DEFAULT 'online',
+                  update_status TEXT DEFAULT '',
+                  first_seen TEXT, last_seen TEXT, extra TEXT DEFAULT '{}')"""
+        )
 
         existing = {row[0] for row in conn.execute(
             "SELECT key FROM config WHERE branch_id=0"
@@ -545,6 +558,79 @@ def delete_user(username):
         if r and r["role"] == "admin" and n <= 1:
             raise ValueError("Không thể xoá tài khoản admin cuối cùng.")
         conn.execute("DELETE FROM users WHERE username=?", (username,))
+
+
+# ---------------------------------------------------------------- thiết bị kiosk
+def upsert_device(device_id, **fields):
+    """Ghi nhận / cập nhật một kiosk (heartbeat). Không ảnh hưởng nghiệp vụ bốc số."""
+    device_id = (device_id or "").strip()
+    if not device_id:
+        raise ValueError("Thiếu device_id.")
+    cols = ("branch_code", "name", "version", "printer", "paper_mm",
+            "status", "update_status", "extra")
+    vals = {k: fields[k] for k in cols if k in fields and fields[k] is not None}
+    if "extra" in vals and not isinstance(vals["extra"], str):
+        vals["extra"] = json.dumps(vals["extra"], ensure_ascii=False)
+    now = now_str()
+    with LOCK, get_conn() as conn:
+        exists = conn.execute("SELECT 1 FROM devices WHERE device_id=?", (device_id,)).fetchone()
+        if exists:
+            if vals:
+                sets = ", ".join(f"{k}=?" for k in vals)
+                conn.execute(f"UPDATE devices SET {sets}, last_seen=? WHERE device_id=?",
+                             (*vals.values(), now, device_id))
+            else:
+                conn.execute("UPDATE devices SET last_seen=? WHERE device_id=?", (now, device_id))
+        else:
+            keys = ["device_id", "first_seen", "last_seen", *vals.keys()]
+            conn.execute(
+                f"INSERT INTO devices ({', '.join(keys)}) VALUES ({', '.join('?' * len(keys))})",
+                (device_id, now, now, *vals.values()),
+            )
+    return get_device(device_id)
+
+
+def get_device(device_id):
+    with get_conn() as conn:
+        r = conn.execute("SELECT * FROM devices WHERE device_id=?", (device_id,)).fetchone()
+    return dict(r) if r else None
+
+
+def list_devices():
+    with get_conn() as conn:
+        return [dict(r) for r in conn.execute(
+            "SELECT * FROM devices ORDER BY branch_code, device_id")]
+
+
+# --------- phát hành bản kiosk (auto-update). Lưu ở config toàn cục key 'kiosk_release'
+_KIOSK_RELEASE_DEFAULT = {
+    "version": "", "download_url": "", "sha256": "",
+    "mandatory": False, "release_notes": "", "min_supported_version": "",
+}
+
+
+def get_kiosk_release(branch_code=None):
+    """Bản phát hành áp dụng. v1: 1 bản chung; hỗ trợ đè theo chi nhánh nếu sau này
+    lưu 'kiosk_release' ở config của branch đó."""
+    data = dict(_KIOSK_RELEASE_DEFAULT)
+    data.update(get_json_config("kiosk_release", {}, GLOBAL) or {})
+    if branch_code:
+        b = get_branch(branch_code)
+        if b:
+            override = get_json_config("kiosk_release", None, b["id"])
+            if override:
+                data.update(override)
+    return data
+
+
+def set_kiosk_release(**fields):
+    data = dict(_KIOSK_RELEASE_DEFAULT)
+    data.update(get_json_config("kiosk_release", {}, GLOBAL) or {})
+    for k in _KIOSK_RELEASE_DEFAULT:
+        if k in fields and fields[k] is not None:
+            data[k] = fields[k]
+    set_json_config("kiosk_release", data, GLOBAL)
+    return data
 
 
 # ---------------------------------------------------------------- domain helpers

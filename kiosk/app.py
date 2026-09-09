@@ -64,7 +64,7 @@ CALLBACKS = {
 
 
 class KioskApp(ctk.CTk):
-    def __init__(self):
+    def __init__(self, callbacks=None):
         super().__init__(fg_color=COLORS["bg"])
         self.title("Kiosk bốc số thứ tự")
         self._fullscreen = bool(APP_CONFIG.get("fullscreen", True))
@@ -84,7 +84,7 @@ class KioskApp(ctk.CTk):
 
         self.grid_rowconfigure(0, weight=1)
         self.grid_columnconfigure(0, weight=1)
-        self.screen = MainScreen(self, CALLBACKS)
+        self.screen = MainScreen(self, callbacks or CALLBACKS)
         self.screen.grid(row=0, column=0, sticky="nsew")
 
     def _toggle_fullscreen(self, _=None):

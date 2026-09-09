@@ -16,6 +16,10 @@
   python manage.py import-users <nhansu.csv> [mật_khẩu_mặc_định]
         # CSV cột: branch,full_name[,password]  — branch là MÃ hoặc TÊN chi nhánh
         # username tự sinh: cn<mã>.<tên><chữ đầu các từ còn lại>
+  python manage.py list-devices                      # xem kiosk đã heartbeat
+  python manage.py kiosk-release <version> <download_url> <sha256> [mandatory]
+        # đặt bản kiosk mới nhất cho auto-update (mandatory = true/1 -> bắt buộc)
+  python manage.py show-kiosk-release
 """
 import csv
 import hashlib
@@ -214,6 +218,29 @@ def main(argv):
         print(f"\nĐã tạo {ok} tài khoản, lỗi {fail}.\n")
         for u, n, c, p in rows_out:
             print(f"  {u:<24} {p:<12} {c:<10} {n}")
+
+    elif cmd == "list-devices":
+        devs = db.list_devices()
+        if not devs:
+            print("(chưa có kiosk nào gửi heartbeat)")
+        for d in devs:
+            print(f"  {d['device_id']:<22} {d['branch_code']:<10} v{d['version'] or '?':<10} "
+                  f"{d['status']:<8} in={d['printer'] or '-':<16} last={d['last_seen']}")
+        print(f"\nTổng: {len(devs)} thiết bị.")
+
+    elif cmd == "kiosk-release":
+        if len(argv) < 4:
+            print('VD: python manage.py kiosk-release 1.0.7 '
+                  'https://github.com/.../GoSoKiosk_Update_1.0.7.zip <sha256> [true]')
+            return
+        mandatory = len(argv) > 4 and argv[4].lower() in ("1", "true", "yes")
+        rel = db.set_kiosk_release(version=argv[1], download_url=argv[2],
+                                   sha256=argv[3], mandatory=mandatory)
+        print("Đã đặt bản phát hành kiosk:")
+        print(json.dumps(rel, ensure_ascii=False, indent=2))
+
+    elif cmd == "show-kiosk-release":
+        print(json.dumps(db.get_kiosk_release(), ensure_ascii=False, indent=2))
 
     elif cmd == "show-config":
         if len(argv) < 2:

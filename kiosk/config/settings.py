@@ -100,25 +100,34 @@ APP_CONFIG = {
 }
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
-CONFIG_JSON = os.path.join(os.path.dirname(_HERE), "config.json")
+_LEGACY_JSON = os.path.join(os.path.dirname(_HERE), "config.json")
+
+
+def _raw_config():
+    """Đọc config máy: ưu tiên ProgramData (qua goso.appconfig), fallback file cũ."""
+    try:
+        import sys
+        sys.path.insert(0, os.path.dirname(os.path.dirname(_HERE)))  # để import goso
+        from goso import appconfig
+        return appconfig.load()
+    except Exception:  # noqa: BLE001  (dev / thiếu goso -> đọc thẳng file cũ)
+        try:
+            with open(_LEGACY_JSON, encoding="utf-8") as f:
+                return json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError, OSError):
+            return {}
 
 
 def _load_overrides(cfg):
-    """Nạp đè từ kiosk/config.json (nếu có) rồi tới biến môi trường."""
-    try:
-        with open(CONFIG_JSON, encoding="utf-8") as f:
-            data = json.load(f)
-        for k in ("organization_name", "branch_name", "left_slogan",
-                  "hero_title", "hero_subtitle", "footer_department",
-                  "footer_team", "fullscreen"):
-            if k in data and data[k] not in (None, ""):
-                cfg[k] = data[k]
-        if isinstance(data.get("right_slogan_lines"), list):
-            cfg["right_slogan_lines"] = data["right_slogan_lines"]
-    except FileNotFoundError:
-        pass
-    except (json.JSONDecodeError, OSError) as e:  # noqa: BLE001
-        print(f"[settings] Bỏ qua config.json lỗi: {e}")
+    """Nạp đè các chữ hiển thị theo chi nhánh từ config máy + biến môi trường."""
+    data = _raw_config() or {}
+    for k in ("organization_name", "branch_name", "left_slogan",
+              "hero_title", "hero_subtitle", "footer_department",
+              "footer_team", "fullscreen"):
+        if k in data and data[k] not in (None, ""):
+            cfg[k] = data[k]
+    if isinstance(data.get("right_slogan_lines"), list):
+        cfg["right_slogan_lines"] = data["right_slogan_lines"]
 
     env_branch = os.environ.get("KIOSK_BRANCH_NAME")
     if env_branch:

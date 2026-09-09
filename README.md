@@ -285,3 +285,138 @@ Người dân xem/huỷ tại `/lich-hen/<token>`.
 - Muốn tải rất lớn / nhiều tiến trình về sau: tách sang PostgreSQL (lớp truy cập
   gói trong `server/db.py`).
 - Chưa tích hợp gửi SMS/Zalo cho lịch hẹn — người dân tự lưu mã hẹn / QR.
+
+---
+
+## 10. Bộ cài Windows Kiosk & tự cập nhật (GoSo Kiosk)
+
+Một bộ cài `GoSoKiosk_Setup_x.y.z.exe` dùng cho **mọi chi nhánh**. Máy triển khai
+KHÔNG cần Python / terminal / pip / sửa JSON.
+
+### Kiến trúc Windows
+
+| Nơi | Nội dung |
+|---|---|
+| `C:\Program Files\GoSo Kiosk\` | `GoSoKiosk.exe`, `GoSoConfig.exe`, `GoSoUpdater.exe`, `assets\`, `VERSION` — **bị thay khi update** |
+| `C:\ProgramData\GoSoKiosk\` | `config.json`, `device.json`, `logs\`, `updates\`, `backup\`, `state\` — **KHÔNG bị update ghi đè** |
+
+Nhờ tách 2 vùng: cập nhật ứng dụng **không mất** chi nhánh / device / server / máy in / cấu hình / log.
+
+Mã nguồn: `kiosk/goso/` (thư viện dùng chung), `kiosk/goso_kiosk.py` (runtime),
+`kiosk/goso_config.py` (Configurator), `kiosk/goso_updater.py` (Updater), `kiosk/app.py` (giao diện).
+
+### Development (không cần build exe)
+
+```bat
+cd kiosk
+pip install -r requirements.txt
+python goso_kiosk.py        :: chưa cấu hình -> tự mở Configurator
+python goso_config.py       :: mở Configurator
+```
+
+Dev lưu dữ liệu ở `kiosk\.godata\` (thay cho ProgramData). Ép nơi khác bằng
+biến môi trường `GOSO_DATA_DIR`. Config cũ `kiosk/config.json` được **tự di trú**
+sang đó ở lần chạy đầu.
+
+### Configurator (`GoSoConfig.exe`)
+
+Chạy sau khi cài (hoặc mở lại bất kỳ lúc nào). Các mục:
+1. **Máy chủ** — nhập URL, bấm *Kiểm tra kết nối* (gọi `/api/ping`, xác nhận đúng GoSo Server).
+2. **Chi nhánh** — combobox nạp từ `GET /api/branches` (không hard-code).
+3. **Máy in** — chọn từ máy in Windows (`win32print`), khổ `58/80` mm, *Chỉ xem trước*, **In thử**.
+4. **Cấu hình kiosk** — Toàn màn hình, Tự chạy cùng Windows; *Cài đặt nâng cao* (`columns`, `refresh_seconds`, `confirm_seconds`, `font`).
+5. **Device ID** — vd `BMT-KIOSK-01` (ổn định, không đổi khi update).
+6. **Lưu và chạy kiosk** — validate → tạo `ProgramData\GoSoKiosk\` → lưu config + device → bật auto-start → chạy `GoSoKiosk.exe`.
+
+### Build
+
+```powershell
+.\scripts\build.ps1              # dist\GoSoKiosk\ + GoSoKiosk_Update_<ver>.zip + version.json
+.\scripts\build.ps1 -Installer   # + dist\GoSoKiosk_Setup_<ver>.exe  (cần Inno Setup)
+```
+
+`GoSoKiosk.spec` là định nghĩa build (PyInstaller onedir, `--windowed`, gộp assets +
+`VERSION`, xử lý resource path khi frozen). Phiên bản lấy từ **1 nguồn**: file `VERSION` ở gốc.
+
+### Installer (`installer\GoSoKiosk.iss`)
+
+- Cài vào `Program Files\GoSo Kiosk\`, tạo `ProgramData\GoSoKiosk\` (không xoá khi uninstall).
+- Start Menu + Desktop shortcut (tuỳ chọn).
+- Lần cài **mới** (chưa có `config.json`) → tự chạy `GoSoConfig.exe`. **Upgrade** → không hỏi lại.
+- Uninstall chỉ gỡ binary, **giữ** cấu hình ở ProgramData.
+
+### Cài một kiosk mới
+
+1. Chạy `GoSoKiosk_Setup_x.y.z.exe`.
+2. Configurator tự mở → nhập máy chủ → *Kiểm tra kết nối* → chọn chi nhánh → chọn máy in → *In thử* → *Lưu và chạy kiosk*.
+3. Xong. Kiosk tự chạy; các lần Windows khởi động sau tự chạy lại (nếu đã bật).
+
+### Đổi máy in / chi nhánh
+
+Mở **GoSo Kiosk - Cấu hình** (Start Menu) → đổi mục cần đổi → *Lưu và chạy kiosk*.
+Device ID và các cấu hình khác giữ nguyên.
+
+### Auto Start
+
+Configurator ghi khoá `HKCU\...\Run\GoSoKiosk` (không cần quyền Admin). Bỏ chọn thì
+xoá khoá. Trỏ tới `GoSoKiosk.exe` trong Program Files (đúng sau update).
+
+### Auto Update
+
+- Server là lớp điều phối: `GET /api/kiosk/version` trả
+  `{version, download_url, sha256, mandatory, release_notes, min_supported_version}`.
+  Đặt bằng: `python server/manage.py kiosk-release <ver> <url> <sha256> [true]`
+  hoặc `POST /api/admin/kiosk-release`.
+- Kiosk hỏi server (khi heartbeat + mỗi 30 phút). Nếu có bản mới hơn:
+  tải vào `ProgramData\GoSoKiosk\updates\` (file `.tmp` → đổi tên khi xong) →
+  kiểm **SHA256** → chạy `GoSoUpdater.exe` (tiến trình riêng, tham số cố định) →
+  kiosk thoát.
+- Updater: chờ kiosk thoát → **sao lưu** `backup\<version cũ>\` → giải nén đè
+  (chống **ZIP path traversal** / absolute path) → chạy bản mới → chờ **health
+  marker** (`state\health.json`, version khớp) ≤ 90 s.
+- Không cập nhật giữa lúc đang cấp/in số (cờ `_updating`), không nhúng token GitHub
+  (mọi phối hợp qua GoSo Server).
+
+### Release version mới
+
+```bash
+# sửa file VERSION nếu cần, rồi:
+git tag v1.0.7
+git push origin v1.0.7
+```
+
+GitHub Actions (`.github/workflows/release.yml`): build 3 exe → gói
+`GoSoKiosk_Update_1.0.7.zip` + SHA256 + `version.json` → Inno Setup →
+tạo GitHub Release + upload `Setup.exe`, `Update.zip`, `version.json`.
+
+Sau khi Release có URL, trỏ server tới bản đó:
+```bat
+python server/manage.py kiosk-release 1.0.7 ^
+  https://github.com/<owner>/<repo>/releases/download/v1.0.7/GoSoKiosk_Update_1.0.7.zip ^
+  <sha256-từ-version.json>
+```
+(Có thể rollout dần: sau này thêm override `kiosk_release` theo chi nhánh — schema đã sẵn.)
+
+### Rollback
+
+Trước khi thay, Updater sao lưu bản đang chạy vào `ProgramData\GoSoKiosk\backup\<ver>\`.
+Nếu bản mới không tạo health marker đúng hạn / crash → Updater **khôi phục** bản cũ
+và chạy lại. Version lỗi bị ghi vào `state\update_attempts.json`; sau
+2 lần thất bại, kiosk **không thử lại** version đó (chống loop) cho tới khi server
+đổi sang version khác.
+
+### Logs
+
+`C:\ProgramData\GoSoKiosk\logs\` — `kiosk.log`, `configurator.log`, `updater.log`
+(xoay vòng 1 MB × 5). Không ghi secret/token.
+
+### Troubleshooting
+
+| Triệu chứng | Xử lý |
+|---|---|
+| Kiosk mở ra Configurator | `config.json` thiếu `server_url`/`branch_code`/`api_key` — điền lại. |
+| "Địa chỉ này không phải GoSo Server" | Sai URL, hoặc server chưa chạy. |
+| In thử không ra | Sai máy in, hoặc máy in đổi tên → mở Configurator chọn lại; hoặc bật *Chỉ xem trước*. |
+| Không tự chạy khi khởi động | Mở Configurator, bật *Tự chạy cùng Windows*, Lưu. |
+| Update mãi không lên | Xem `updater.log`; kiểm `sha256` trong `manage.py show-kiosk-release` khớp file. |
+| `ProgramData` không ghi được | Chạy Configurator bằng quyền phù hợp; kiểm quyền thư mục `C:\ProgramData\GoSoKiosk`. |

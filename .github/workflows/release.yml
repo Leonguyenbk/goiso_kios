@@ -1,0 +1,79 @@
+name: Release Kiosk
+
+# Tạo bản phát hành khi push tag vX.Y.Z
+#   git tag v1.0.7 && git push origin v1.0.7
+on:
+  push:
+    tags: ["v*.*.*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Phiên bản (không có 'v'), vd 1.0.7"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Xác định version từ tag
+        id: ver
+        shell: pwsh
+        run: |
+          if ($env:GITHUB_REF -like 'refs/tags/v*') {
+            $v = $env:GITHUB_REF -replace 'refs/tags/v',''
+          } else {
+            $v = '${{ github.event.inputs.version }}'
+          }
+          if (-not $v) { throw "Không xác định được version" }
+          Set-Content VERSION $v -NoNewline
+          "version=$v" >> $env:GITHUB_OUTPUT
+          Write-Host "VERSION = $v"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Cài phụ thuộc
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r kiosk/requirements.txt pyinstaller
+
+      - name: Cài Inno Setup
+        run: choco install innosetup --no-progress -y
+
+      - name: Build (exe + update zip + version.json)
+        shell: pwsh
+        run: .\scripts\build.ps1 -Installer
+
+      - name: Bổ sung download_url vào version.json
+        shell: pwsh
+        run: |
+          $v = '${{ steps.ver.outputs.version }}'
+          $url = "https://github.com/${{ github.repository }}/releases/download/v$v/GoSoKiosk_Update_$v.zip"
+          $j = Get-Content dist/version.json -Raw | ConvertFrom-Json
+          $j | Add-Member -NotePropertyName download_url -NotePropertyValue $url -Force
+          $j | ConvertTo-Json | Set-Content dist/version.json -Encoding UTF8
+          Get-Content dist/version.json
+
+      - name: Tạo GitHub Release + upload
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "GoSo Kiosk v${{ steps.ver.outputs.version }}"
+          generate_release_notes: true
+          files: |
+            dist/GoSoKiosk_Setup_${{ steps.ver.outputs.version }}.exe
+            dist/GoSoKiosk_Update_${{ steps.ver.outputs.version }}.zip
+            dist/version.json
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: GoSoKiosk-${{ steps.ver.outputs.version }}
+          path: |
+            dist/GoSoKiosk_Setup_${{ steps.ver.outputs.version }}.exe
+            dist/GoSoKiosk_Update_${{ steps.ver.outputs.version }}.zip
+            dist/version.json

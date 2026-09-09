@@ -40,6 +40,22 @@ BASE_URL = os.environ.get("GOISO_BASE_URL", "").rstrip("/")
 TURNSTILE_SITE_KEY = os.environ.get("TURNSTILE_SITE_KEY", "")
 
 
+def _server_version():
+    here = os.path.dirname(os.path.abspath(__file__))
+    for p in (os.path.join(here, "VERSION"), os.path.join(here, "..", "VERSION")):
+        try:
+            with open(p, encoding="utf-8") as f:
+                v = f.read().strip()
+            if v:
+                return v
+        except OSError:
+            continue
+    return "0.0.0"
+
+
+SERVER_VERSION = _server_version()
+
+
 def _client_ip():
     return (request.headers.get("CF-Connecting-IP")
             or (request.headers.get("X-Forwarded-For", "").split(",")[0].strip())
@@ -737,6 +753,72 @@ def api_admin_reset_today():
         )
     push_snapshot(bid)
     return jsonify(ok=True)
+
+
+# ----------------------------------------------------------------- API kiosk / thiết bị
+@app.get("/api/ping")
+def api_ping():
+    """Xác nhận đây là GoSo Server (dùng cho Configurator 'Kiểm tra kết nối')."""
+    return jsonify(ok=True, service="goso-kiosk-server",
+                   server_version=SERVER_VERSION, time=db.now_str())
+
+
+@app.get("/api/branches")
+def api_branches():
+    """Danh sách chi nhánh đang hoạt động (công khai, cho Configurator chọn chi nhánh)."""
+    return jsonify(branches=[
+        {"id": b["id"], "code": b["code"], "name": b["name"], "full_name": b["full_name"]}
+        for b in db.list_branches(active_only=True)
+    ])
+
+
+@app.get("/api/kiosk/version")
+def api_kiosk_version():
+    """Bản kiosk mới nhất áp dụng cho (chi nhánh / thiết bị). v1: 1 bản chung, có
+    đường mở rộng rollout theo branch_code về sau."""
+    rel = db.get_kiosk_release(request.args.get("branch_code") or None)
+    return jsonify(rel)
+
+
+@app.post("/api/b/<code>/heartbeat")
+@resolve_branch
+@require_branch_key
+def api_kiosk_heartbeat():
+    body = request.get_json(silent=True) or {}
+    did = (body.get("device_id") or "").strip()
+    if not did:
+        return jsonify(error="Thiếu device_id."), 400
+    try:
+        dev = db.upsert_device(
+            did, branch_code=g.branch["code"],
+            name=body.get("name", ""), version=body.get("version", ""),
+            printer=body.get("printer", ""), paper_mm=int(body.get("paper_mm") or 80),
+            status=body.get("status", "online"),
+            update_status=body.get("update_status", ""),
+        )
+    except (ValueError, TypeError) as e:
+        return jsonify(error=str(e)), 400
+    return jsonify(ok=True, device=dev,
+                   release=db.get_kiosk_release(g.branch["code"]))
+
+
+@app.get("/api/admin/devices")
+@admin_required
+def api_admin_devices():
+    return jsonify(devices=db.list_devices(), release=db.get_kiosk_release())
+
+
+@app.post("/api/admin/kiosk-release")
+@admin_required
+def api_admin_set_kiosk_release():
+    b = request.get_json(silent=True) or {}
+    rel = db.set_kiosk_release(
+        version=b.get("version"), download_url=b.get("download_url"),
+        sha256=b.get("sha256"), mandatory=b.get("mandatory"),
+        release_notes=b.get("release_notes"),
+        min_supported_version=b.get("min_supported_version"),
+    )
+    return jsonify(ok=True, release=rel)
 
 
 # ----------------------------------------------------------------- API đặt lịch online (công khai)

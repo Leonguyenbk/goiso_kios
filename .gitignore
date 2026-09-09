@@ -41,3 +41,11 @@ Thumbs.db
 server/tts_cache/
 
 kiosk/**/__pycache__/
+
+# --- Bộ cài Windows / build kiosk ---
+dist/
+build/
+build_version_info.txt
+installer/Output/
+kiosk/.godata/
+*.exe
