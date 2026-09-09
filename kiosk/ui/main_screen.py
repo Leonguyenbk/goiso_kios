@@ -13,6 +13,19 @@ from ui.widgets.footer import Footer
 from ui.widgets.service_card import ServiceCard
 
 
+def _avg_hex(pil_img, top=0.0, bottom=0.72):
+    """Màu trung bình của DẢI ngang [top..bottom] của ảnh (nơi có các góc thẻ +
+    khe giữa thẻ). Bỏ phần đáy (cảnh vật đậm) cho khớp vùng quanh thẻ."""
+    try:
+        im = pil_img.convert("RGB")
+        w, h = im.size
+        band = im.crop((0, int(h * top), w, max(int(h * top) + 1, int(h * bottom))))
+        r, g, b = band.resize((1, 1)).getpixel((0, 0))
+        return f"#{r:02x}{g:02x}{b:02x}"
+    except Exception:  # noqa: BLE001
+        return COLORS["bg"]
+
+
 class MainScreen(ctk.CTkFrame):
     def __init__(self, master, callbacks: dict):
         super().__init__(master, fg_color=COLORS["bg"], corner_radius=0)
@@ -135,6 +148,12 @@ class MainScreen(ctk.CTkFrame):
             pil = background.get(w, h)
             self._stage_bg_img = ctk.CTkImage(light_image=pil, dark_image=pil, size=(w, h))
             self._stage_bg.configure(image=self._stage_bg_img)
+            # Góc bo của thẻ (CTkFrame) lộ màu của KHUNG CHA, không lộ ảnh nền phía
+            # sau -> lấy màu trung bình của nền và gán làm màu góc để thẻ liền mạch.
+            avg = _avg_hex(pil)
+            self._stage.configure(fg_color=avg)
+            for c in self._cards:
+                c.configure(bg_color=avg)
         except Exception as e:  # noqa: BLE001
             print(f"[MainScreen] Lỗi dựng nền: {e}")
 
