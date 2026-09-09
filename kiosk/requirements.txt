@@ -1,5 +1,7 @@
+# Giao diện Kiosk mới (app.py) chỉ cần 2 gói đầu:
 customtkinter>=5.2
 Pillow>=10.0
+# Các gói dưới đây dành cho luồng bốc số / in phiếu cũ (kiosk.py):
 requests>=2.31
 qrcode>=7.4
 pywin32>=306 ; platform_system == "Windows"
